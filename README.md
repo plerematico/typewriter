@@ -1,2 +1,2 @@
 # typewriter
-html bases typewriter simulator
+html based typewriter simulator
