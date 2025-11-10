@@ -215,6 +215,25 @@
         min-width: 120px;
       }
     }
+  /* --- Visual scale for the whole sheet (no logic change) --- */
+/* Use whichever selector your sheet uses: .paper-area OR .paper */
+.paper-area, .paper {
+  transform-origin: top left;
+}
+
+/* Keep the viewport scrollable if needed */
+#viewport, .viewport {
+  overflow: auto;
+}
+
+/* Simple breakpoints that scale the entire page visually */
+@media (max-width: 1200px) { .paper-area, .paper { transform: scale(0.95); } }
+@media (max-width: 1000px) { .paper-area, .paper { transform: scale(0.88); } }
+@media (max-width:  850px) { .paper-area, .paper { transform: scale(0.80); } }
+@media (max-width:  720px) { .paper-area, .paper { transform: scale(0.72); } }
+@media (max-width:  620px) { .paper-area, .paper { transform: scale(0.66); } }
+@media (max-width:  540px) { .paper-area, .paper { transform: scale(0.60); } }
+
   </style>
 </head>
 <body>
@@ -740,5 +759,6 @@
   </script>
 </body>
 </html>
+
 
 
