@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Typewriter Challenge (35 Lines + Margins)</title>
+  <title>Typewriter Challenge</title>
 
   <!-- Include jsPDF for PDF export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -225,17 +225,15 @@
       <div class="desc">
         <b>Instructions</b><br>
         - No deletions or backspace erasure.<br>
-        - Bell rings at column 55.<br>
-        - Overstrike beyond column 59.<br>
+        - Bell rings to indicate end of line.<br>
+        - Overstrike happens if no new line is added.<br>
         - Backspace only moves cursor left.<br>
-        - No arrow keys or mouse navigation.<br>
-        - Margins remain blank.<br>
+        - Don´t type too fast!<br>
         <br>
         <small>
           Fill last text line + Enter → page scrolls up, thumbnail appears on right, new sheet rolls in.<br>
-          Or press Ctrl+Enter to finish immediately.<br>
-          Typed characters now vary randomly in shade and shift ±1px (20% chance). PDF will replicate both.
-        </small>
+          Or press Ctrl+Enter to finish the page immediately.<br>
+          </small>
       </div>
 
       <button id="reset-btn">Hard Reset</button>
@@ -742,3 +740,4 @@
   </script>
 </body>
 </html>
+
