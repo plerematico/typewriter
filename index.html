@@ -8,18 +8,16 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <style>
-    /* ─────────────────────────────────────────────────────────────────────────┐
-       Reset & Layout
-    ─────────────────────────────────────────────────────────────────────────┘ */
     html, body {
       height: 100%;
       margin: 0;
       padding: 0;
-      background: #e5e5d3;
+      background: #222;
       width: 100vw;
       box-sizing: border-box;
       font-family: 'Courier New', Courier, monospace;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: hidden;
     }
 
     .main-layout {
@@ -28,27 +26,51 @@
       width: 100vw;
     }
 
-    /* ── LEFT PANEL ── */
+    /* Small unobtrusive toggle buttons */
+    .panel-toggle {
+      position: absolute;
+      top: 6px;
+      z-index: 1000;
+      padding: 2px 6px;
+      font-size: 0.7em;
+      border-radius: 3px;
+      border: 1px solid #aaa;
+      background: #f8f8f8;
+      opacity: 0.55;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .panel-toggle:hover { opacity: 1; }
+    .panel-toggle-left { left: 6px; }
+    .panel-toggle-right { right: 6px; }
+
+    /* LEFT PANEL */
     .left-frame {
-      width: 20vw;
+      flex: 0 0 20vw;
       min-width: 200px;
-      background: #D1A48C;
-      border-right: 2px solid #b6b6b6;
+      background: url('photo-1585314062340-f1a5a7c9328d.avif') center/cover no-repeat;
+      border-right: 0;
       padding: 32px 18px 24px 18px;
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
       align-items: flex-start;
+      transition: flex-basis 0.3s ease, padding 0.3s ease, min-width 0.3s ease;
+      color: #f5f5f5;
+      box-shadow: 6px 0 14px rgba(0, 0, 0, 0.75);
+      z-index: 2;
     }
     .left-frame h1 {
       font-size: 2em;
       margin-bottom: 0.3em;
       font-family: 'Arial Black', Arial, sans-serif;
-      color: #37423b;
+      color: #fdfdfd;
+      text-shadow: 0 1px 2px #000;
     }
     .left-frame .desc {
       line-height: 1.4;
-      color: #333;
+      color: #f0f0f0;
+      text-shadow: 0 1px 2px #000;
     }
     #reset-btn {
       margin-top: 16px;
@@ -60,18 +82,17 @@
       border-radius: 4px;
       cursor: pointer;
     }
-    #reset-btn:hover {
-      background: #c9302c;
-    }
+    #reset-btn:hover { background: #c9302c; }
 
-    /* ── CENTER PANEL ── */
+    /* CENTER PANEL (your background image) */
     .center-frame {
-      width: 65vw;
-      background: #e7e7de;
+      flex: 1 1 auto;
+      min-width: 0;
+      background: url('20251127_150242862.JPG') center/cover no-repeat;
       position: relative;
       display: flex;
       justify-content: center;
-      align-items: flex-end; /* pin viewport to bottom */
+      align-items: flex-end;
       overflow: hidden;
     }
 
@@ -89,8 +110,8 @@
 
     .paper-area {
       background: #FFFFFF;
-      border-radius: 0 0 0 0;
-      box-shadow: 0 60px 60px #707070;
+      border-radius: 0;
+      box-shadow: 0 60px 60px #0008;
       border: 2.5px solid #bbb6b6;
       display: flex;
       flex-direction: column;
@@ -99,6 +120,7 @@
       width: fit-content;
       transform-origin: top center;
       font-family: 'Courier New', Courier, monospace;
+      z-index: 3;
     }
 
     @keyframes slide-out {
@@ -111,22 +133,28 @@
       animation: slide-out 1s ease-in forwards;
     }
 
-    /* ── RIGHT PANEL ── */
+    /* RIGHT PANEL */
     .right-frame {
-      width: 15vw;
+      flex: 0 0 15vw;
       min-width: 150px;
-      background: #FFC480;
-      border-left: 2px solid #b6b6b6;
+      background: url('photo-1585314062340-f1a5a7c9328d.avif') center/cover no-repeat;
+      border-left: 0;
       padding: 10px;
       box-sizing: border-box;
       overflow-y: auto;
+      transition: flex-basis 0.3s ease, padding 0.3s ease, min-width 0.3s ease;
+      color: #f5f5f5;
+      box-shadow: -6px 0 14px rgba(0, 0, 0, 0.75);
+      z-index: 2;
     }
     .right-frame h2 {
       margin-top: 0;
       font-size: 1.2em;
       font-family: 'Arial Black', Arial, sans-serif;
-      color: #37423b;
+      color: #fdfdfd;
+      text-shadow: 0 1px 2px #000;
     }
+
     .thumbnail-wrapper {
       display: flex;
       flex-direction: column;
@@ -141,10 +169,11 @@
       font-family: 'Courier New', Courier, monospace;
       font-size: 3px;
       line-height: 4px;
-      padding: 2px;
-      width: 100px;
+      padding: 4px 6px;              /* extra padding so right margin is visible */
+      width: 110px;                  /* slightly wider to keep proportions */
       height: 141px;
       overflow: hidden;
+      box-sizing: border-box;
     }
     .thumbnail-row {
       white-space: pre;
@@ -153,9 +182,11 @@
       text-align: center;
       margin-top: 4px;
       font-size: 0.8em;
+      color: #f5f5f5;
+      text-shadow: 0 1px 2px #000;
     }
 
-    /* ── PAPER GRID ── */
+    /* PAPER GRID */
     .paper-row {
       display: flex;
       height: 2.1em;
@@ -174,52 +205,176 @@
       font-family: 'Courier New', Courier, monospace;
       color: rgba(0,0,0,1);
     }
-    .cell.margin {
-      background: #fff;
-    }
-    .cell.textarea {
-      background: #fff;
-    }
+    .cell.margin { background: #fff; }
+    .cell.textarea { background: #fff; }
+
     .cell .overstrike-stack {
       position: relative;
       display: inline-block;
     }
     .cell .overstrike-stack span {
       position: absolute;
-      left: 0;
-      transform: translateY(-50%);
+      left: 50%;
+      transform: translate(-50%, -50%);
       pointer-events: none;
       font-weight: bold;
       text-shadow: 0 0 3px #fff7, 1px 1px 1px #2321;
     }
 
-    @keyframes blink {
-      0%, 50% { background-color: rgba(200, 200, 200, 0.4); }
-      50%, 100% { background-color: transparent; }
+    /* Cursor box */
+    @keyframes blinkBox {
+      0%, 50% { opacity: 1; }
+      50%, 100% { opacity: 0; }
     }
-    .cell.cursor {
-      animation: blink 1.2s steps(1) infinite;
+    .cell.cursor::before {
+      content: "";
+      position: absolute;
+      width: calc(var(--cell-size, 24px) - 4px);
+      height: 1.6em;
+      border-radius: 2px;
+      border: 1px solid rgba(0,0,0,0.6);
+      background: rgba(200,200,200,0.45);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      box-sizing: border-box;
+      animation: blinkBox 1.2s steps(1) infinite;
     }
-    .cell, .cell * {
-      user-select: none;
+
+    /* Hide cursor while long Enter sound is playing */
+    .hide-cursor .cell.cursor::before {
+      display: none;
+    }
+
+    .cell, .cell * { user-select: none; }
+
+    /* Collapsed panels */
+    body.left-collapsed .left-frame {
+      flex-basis: 12px;
+      min-width: 12px;
+      padding: 0;
+      border-right: none;
+      overflow: hidden;
+      box-shadow: 4px 0 10px rgba(0,0,0,0.8);
+    }
+    body.left-collapsed .left-frame > * {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    body.right-collapsed .right-frame {
+      flex-basis: 12px;
+      min-width: 12px;
+      padding: 0;
+      border-left: none;
+      overflow: hidden;
+      box-shadow: -4px 0 10px rgba(0,0,0,0.8);
+    }
+    body.right-collapsed .right-frame > * {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
     }
 
     @media (max-width: 900px) {
-      .center-frame {
-        width: 60vw;
-      }
-      .right-frame {
-        width: 20vw;
-      }
-      .left-frame {
-        min-width: 120px;
-      }
+      .left-frame { min-width: 120px; }
+      .right-frame { min-width: 120px; }
     }
-   </style>
+
+    /* PREVIEW OVERLAY */
+    .preview-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    /* warm brown/orange preview "frame" */
+    .preview-dialog {
+      background: #6b3b1f; /* deep warm brown */
+      border-radius: 6px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.7);
+      padding: 16px 18px;
+      max-width: 70vw;
+      width: 70vw;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      border: 2px solid #3e2414;
+    }
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .preview-title {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 1em;
+      color: #ffe7c8;
+    }
+    .preview-buttons {
+      display: flex;
+      gap: 6px;
+    }
+    .preview-buttons button {
+      font-size: 0.8em;
+      padding: 3px 7px;
+      cursor: pointer;
+      border-radius: 3px;
+      border: 1px solid #88522b;
+      background: #ffddaa;
+      color: #4a2a12;
+    }
+    .preview-buttons button:hover {
+      background: #ffd08a;
+    }
+
+    /* warm background behind the paper, so "extra space" feels intentional */
+    .preview-content {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      background: #9c5a28; /* warm orange-brown */
+      border: 1px solid #7b421d;
+      padding: 12px;
+      box-sizing: border-box;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .preview-paper {
+      box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+      border: 1px solid #ddd;
+      transform-origin: top center;
+      display: inline-block;
+      background: #ffffff;
+    }
+    .preview-paper .paper-row {
+      height: 2.1em;
+    }
+    .preview-paper .cell {
+      height: 2em;
+      /* font-size NOT changed here so it matches the real page exactly */
+    }
+    .preview-paper .cell.cursor::before {
+      display: none; /* no cursor in previews */
+    }
+  </style>
 </head>
 <body>
+  <!-- Tiny toggle buttons -->
+  <button id="toggle-left-btn" class="panel-toggle panel-toggle-left">Hide</button>
+  <button id="toggle-right-btn" class="panel-toggle panel-toggle-right">Hide</button>
+
   <div class="main-layout">
-    <!-- ── LEFT PANEL ── -->
+    <!-- LEFT PANEL -->
     <div class="left-frame">
       <h1>Typewriter Challenge</h1>
       <div class="desc">
@@ -228,25 +383,23 @@
         - Bell rings to indicate end of line.<br>
         - Overstrike happens if no new line is added.<br>
         - Backspace only moves cursor left.<br>
-        - Don´t type too fast!<br>
-        <br>
+        - Don´t type too fast!<br><br>
         <small>
-          Fill last text line + Enter → page scrolls up, thumbnail appears on right, new sheet rolls in.<br>
-          Or press Ctrl+Enter to finish the page immediately.<br>
-          </small>
+          - Enter: new line, move to left margin.<br>
+          - Ctrl+Enter: finish the page immediately.<br>
+        </small>
       </div>
-
       <button id="reset-btn">Hard Reset</button>
     </div>
 
-    <!-- ── CENTER PANEL ── -->
+    <!-- CENTER PANEL -->
     <div class="center-frame" id="center-frame">
       <div class="viewport" id="viewport">
         <!-- JS injects paper-area here -->
       </div>
     </div>
 
-    <!-- ── RIGHT PANEL ── -->
+    <!-- RIGHT PANEL -->
     <div class="right-frame" id="right-frame">
       <h2>Finished Pages</h2>
       <!-- Thumbnails appear here -->
@@ -255,66 +408,134 @@
 
   <audio id="bell" src="Ding.wav" preload="auto"></audio>
   <audio id="keypress-sound" src="type.wav" preload="auto"></audio>
-  <audio id="enter-sound" src="enter.wav" preload="auto"></audio>
+  <audio id="enter-long-sound"  src="enter.wav" preload="auto"></audio>
   <audio id="nokey-sound" src="nokey.wav" preload="auto"></audio>
 
   <script>
-    // ─── SETTINGS & GLOBAL STATE ───
+    // SETTINGS & STATE
     const TOP_MARGIN_ROWS    = 2;
     const TEXT_LINES         = 35;
     const BOTTOM_MARGIN_ROWS = 2;
-    const TOTAL_ROWS         = TOP_MARGIN_ROWS + TEXT_LINES + BOTTOM_MARGIN_ROWS; // 39
+    const TOTAL_ROWS         = TOP_MARGIN_ROWS + TEXT_LINES + BOTTOM_MARGIN_ROWS;
     const COLS               = 65;
     const LEFT_MARGIN        = 5;
     const RIGHT_MARGIN       = 5;
     const TEXT_COLS          = 55;
-    const FIRST_TEXT_COL     = LEFT_MARGIN;                // 5
-    const LAST_TEXT_COL      = FIRST_TEXT_COL + TEXT_COLS - 1; // 59
-    const BELL_COL           = FIRST_TEXT_COL + TEXT_COLS - 5; // 55
+    const FIRST_TEXT_COL     = LEFT_MARGIN;
+    const LAST_TEXT_COL      = FIRST_TEXT_COL + TEXT_COLS - 1;
+    const BELL_COL           = FIRST_TEXT_COL + TEXT_COLS - 5;
 
-    const VISIBLE_INITIAL = 3;        // initial visible rows
-    const SHORT_DELAY     = 50;       // ms delay for non-Enter keys
-    const SHIFT_PROB      = 0.1;      // 10% chance to shift up/down
+    const VISIBLE_INITIAL    = 3;
+    const SHORT_DELAY        = 50;
+    const SHIFT_PROB         = 0.1;
+    const ENTER_ACTION_DELAY = 60;
 
-    // DOM References
     const viewportElem = document.getElementById('viewport');
     const rightFrame   = document.getElementById('right-frame');
     const bell         = document.getElementById('bell');
     const keyClick     = document.getElementById('keypress-sound');
-    const enterSound   = document.getElementById('enter-sound');
+    const enterLong    = document.getElementById('enter-long-sound');
     const nokeySound   = document.getElementById('nokey-sound');
 
-    // Globals
-    let pagesData = [];  
-    let currentData;     // 39×65 array: each cell holds array of { ch, shade, yOffset }
+    let pagesData = [];
+    let currentData;
     let cursorRow, cursorCol;
-    let paperDiv;        
-    let rowPx = 0;       
+    let paperDiv;
+    let rowPx = 0;
     let isTyping = false;
-    let enterDelayMs = 0;  
 
-    // Capture enter.wav duration after load
-    enterSound.addEventListener('loadedmetadata', () => {
-      if (!isNaN(enterSound.duration)) {
-        enterDelayMs = Math.ceil(enterSound.duration * 1000);
-      }
+    let audioWarmed = false;
+    let canPlayKeySound = true;
+
+    enterLong.addEventListener('ended', () => {
+      document.body.classList.remove('hide-cursor');
+      isTyping = false;
     });
 
-    // ─── INITIALIZE BLANK PAGE ───
+    // ---------- AUDIO HELPERS ----------
+
+    function warmUpAudio() {
+      if (audioWarmed) return;
+      audioWarmed = true;
+
+      const sounds = [keyClick, enterLong, bell, nokeySound];
+      sounds.forEach(a => {
+        if (!a) return;
+        const oldVol = a.volume;
+        a.volume = 0;
+        try {
+          a.currentTime = 0;
+          const p = a.play();
+          if (p && typeof p.catch === 'function') {
+            p.catch(() => {});
+          }
+        } catch {}
+        setTimeout(() => {
+          try {
+            a.pause();
+            a.currentTime = 0;
+          } catch {}
+          a.volume = oldVol;
+        }, 250);
+      });
+    }
+
+    function playKeyClick() {
+      if (!canPlayKeySound) return;
+      try {
+        keyClick.pause();
+        keyClick.currentTime = 0;
+        keyClick.play();
+      } catch {}
+    }
+
+    function playBell() {
+      try {
+        canPlayKeySound = false;
+        keyClick.pause();
+        keyClick.currentTime = 0;
+
+        bell.currentTime = 0;
+        const p = bell.play();
+        if (p && typeof p.catch === 'function') {
+          p.catch(() => { canPlayKeySound = true; });
+        }
+        bell.onended = () => {
+          canPlayKeySound = true;
+        };
+      } catch {
+        if (window.AudioContext) {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const o   = ctx.createOscillator();
+          const g   = ctx.createGain();
+          o.type = 'sine';
+          o.frequency.value = 920;
+          g.gain.value = 0.07;
+          o.connect(g);
+          g.connect(ctx.destination);
+          o.start();
+          o.stop(ctx.currentTime + 0.13);
+          setTimeout(() => {
+            canPlayKeySound = true;
+            ctx.close();
+          }, 200);
+        }
+      }
+    }
+
+    // ---------- PAGE INIT ----------
+
     function initBlankPage() {
       currentData = [];
       for (let r = 0; r < TOTAL_ROWS; r++) {
         const row = [];
-        for (let c = 0; c < COLS; c++) {
-          row.push([]); 
-        }
+        for (let c = 0; c < COLS; c++) row.push([]);
         currentData.push(row);
       }
       cursorRow = TOP_MARGIN_ROWS;
       cursorCol = FIRST_TEXT_COL;
     }
 
-    // ─── CREATE & INSERT PAPER AREA ───
     function createPaperArea() {
       initBlankPage();
       if (paperDiv && viewportElem.contains(paperDiv)) {
@@ -327,6 +548,7 @@
       viewportElem.appendChild(paperDiv);
 
       paperDiv.addEventListener('keydown', handleKey);
+      paperDiv.addEventListener('keyup', handleKeyUp);
       paperDiv.addEventListener('mousedown', e => {
         paperDiv.focus();
         e.preventDefault();
@@ -340,7 +562,8 @@
       });
     }
 
-    // ─── MEASURE ROW HEIGHT & CHAR WIDTH ───
+    // ---------- LAYOUT ----------
+
     function measureRowPx() {
       const tempRow = document.createElement('div');
       tempRow.className = 'paper-row';
@@ -366,7 +589,6 @@
       paperDiv.style.height = (rowPx * TOTAL_ROWS) + 'px';
     }
 
-    // ─── POSITION VIEWPORT PINNED TO BOTTOM ───
     function positionViewport() {
       const visibleRows = Math.max(VISIBLE_INITIAL, cursorRow + 2);
       viewportElem.style.height = (rowPx * visibleRows) + 'px';
@@ -375,12 +597,12 @@
       viewportElem.style.right = '0';
     }
 
-    // ─── RENDER GRID ───
     function renderPage() {
       paperDiv.innerHTML = '';
       for (let r = 0; r < TOTAL_ROWS; r++) {
         const rowDiv = document.createElement('div');
         rowDiv.className = 'paper-row';
+
         for (let c = 0; c < COLS; c++) {
           const cell = document.createElement('div');
           cell.className = 'cell';
@@ -410,121 +632,109 @@
             }
           }
 
-          if (
+          const isCursorHere =
             r === cursorRow &&
             c === cursorCol &&
             r >= TOP_MARGIN_ROWS &&
             r < TOP_MARGIN_ROWS + TEXT_LINES &&
             c >= FIRST_TEXT_COL &&
-            c <= LAST_TEXT_COL
-          ) {
-            cell.classList.add('cursor');
-          }
+            c <= LAST_TEXT_COL;
 
+          if (isCursorHere) cell.classList.add('cursor');
           rowDiv.appendChild(cell);
         }
+
         paperDiv.appendChild(rowDiv);
       }
     }
 
-    // ─── PLAY BELL ───
-    function playBell() {
-      try {
-        bell.currentTime = 0;
-        bell.play();
-      } catch {
-        if (window.AudioContext) {
-          const ctx = new (window.AudioContext || window.webkitAudioContext)();
-          const o   = ctx.createOscillator();
-          const g   = ctx.createGain();
-          o.type            = 'sine';
-          o.frequency.value = 920;
-          g.gain.value      = 0.07;
-          o.connect(g);
-          g.connect(ctx.destination);
-          o.start();
-          o.stop(ctx.currentTime + 0.13);
-          setTimeout(() => ctx.close(), 200);
+    // ---------- PAGE FINISH HELPERS ----------
+
+    function finishPageWithLongLock() {
+      const pageStacks = JSON.parse(JSON.stringify(currentData));
+      pagesData.push(pageStacks);
+      createThumbnail(pageStacks, pagesData.length - 1);
+
+      viewportElem.style.overflow = 'visible';
+      paperDiv.classList.add('paper-out');
+      paperDiv.addEventListener('animationend', () => {
+        if (viewportElem.contains(paperDiv)) {
+          viewportElem.removeChild(paperDiv);
         }
-      }
+        viewportElem.style.overflow = 'hidden';
+        createPaperArea();
+      }, { once: true });
     }
 
-    // ─── HANDLE KEYPRESS ───
+    // ---------- KEY HANDLERS ----------
+
     function handleKey(e) {
       if (document.activeElement !== paperDiv) paperDiv.focus();
-      if (e.key === 'Tab')  { e.preventDefault(); return; }
+
+      if (!audioWarmed) warmUpAudio();
+
+      if (e.repeat && e.key !== 'Enter') {
+        e.preventDefault();
+        return;
+      }
+
+      if (e.key === 'Tab') { e.preventDefault(); return; }
       if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) {
         e.preventDefault();
         return;
       }
 
-      // ─── Ctrl+Enter: finish page at once ───
+      // Ctrl+Enter: finish page with carriage return sound and lock
       if (e.key === 'Enter' && e.ctrlKey) {
         if (isTyping) { e.preventDefault(); return; }
-        isTyping = true;
-        try {
-          enterSound.currentTime = 0;
-          enterSound.play();
-        } catch {}
-        const pageStacks = JSON.parse(JSON.stringify(currentData));
-        pagesData.push(pageStacks);
-        createThumbnail(pageStacks, pagesData.length - 1);
 
-        viewportElem.style.overflow = 'visible';
-        paperDiv.classList.add('paper-out');
-        paperDiv.addEventListener('animationend', () => {
-          if (viewportElem.contains(paperDiv)) {
-            viewportElem.removeChild(paperDiv);
-          }
-          viewportElem.style.overflow = 'hidden';
-          createPaperArea();
-          isTyping = false;
-        }, { once: true });
+        isTyping = true;
+        document.body.classList.add('hide-cursor');
+        try {
+          enterLong.currentTime = 0;
+          enterLong.play();
+        } catch {}
+
+        setTimeout(() => {
+          finishPageWithLongLock();
+        }, ENTER_ACTION_DELAY);
 
         e.preventDefault();
         return;
       }
 
-      // ─── ENTER (no Ctrl): delay ≈ enter.wav ───
+      // Enter: single behavior (carriage return)
       if (e.key === 'Enter') {
         if (isTyping) { e.preventDefault(); return; }
+        if (e.repeat) { e.preventDefault(); return; }
+
         isTyping = true;
+        document.body.classList.add('hide-cursor');
         try {
-          enterSound.currentTime = 0;
-          enterSound.play();
+          enterLong.currentTime = 0;
+          enterLong.play();
         } catch {}
-        const delayMs = enterDelayMs || SHORT_DELAY;
-        if (cursorRow < TOP_MARGIN_ROWS + TEXT_LINES - 1) {
+
+        const lastTextRow = TOP_MARGIN_ROWS + TEXT_LINES - 1;
+
+        if (cursorRow < lastTextRow) {
           setTimeout(() => {
             cursorRow++;
             cursorCol = FIRST_TEXT_COL;
             renderPage();
             positionViewport();
-            isTyping = false;
-          }, delayMs);
+          }, ENTER_ACTION_DELAY);
         } else {
           setTimeout(() => {
-            const pageStacks = JSON.parse(JSON.stringify(currentData));
-            pagesData.push(pageStacks);
-            createThumbnail(pageStacks, pagesData.length - 1);
-
-            viewportElem.style.overflow = 'visible';
-            paperDiv.classList.add('paper-out');
-            paperDiv.addEventListener('animationend', () => {
-              if (viewportElem.contains(paperDiv)) {
-                viewportElem.removeChild(paperDiv);
-              }
-              viewportElem.style.overflow = 'hidden';
-              createPaperArea();
-              isTyping = false;
-            }, { once: true });
-          }, delayMs);
+            finishPageWithLongLock();
+          }, ENTER_ACTION_DELAY);
         }
+
         e.preventDefault();
         return;
       }
 
-      // ─── BACKSPACE: SHORT_DELAY, nokey.wav, move cursor left ───
+      // Backspace
       if (e.key === 'Backspace') {
         if (isTyping) { e.preventDefault(); return; }
         isTyping = true;
@@ -547,7 +757,7 @@
         return;
       }
 
-      // ─── SPACE: SHORT_DELAY, nokey.wav, insert space + advance ───
+      // Space
       if (e.key === ' ') {
         if (isTyping) { e.preventDefault(); return; }
         if (
@@ -569,9 +779,7 @@
             if (r < SHIFT_PROB / 2) yOffset = -1;
             else if (r < SHIFT_PROB) yOffset = 1;
             stack.push({ ch: ' ', shade, yOffset });
-            if (cursorCol < LAST_TEXT_COL) {
-              cursorCol++;
-            }
+            if (cursorCol < LAST_TEXT_COL) cursorCol++;
             renderPage();
             positionViewport();
             isTyping = false;
@@ -581,7 +789,7 @@
         return;
       }
 
-      // ─── PRINTABLE CHARACTER: SHORT_DELAY, type.wav, insert + advance ───
+      // Printable characters
       if (e.key.length === 1) {
         if (isTyping) { e.preventDefault(); return; }
         if (
@@ -591,10 +799,7 @@
           cursorCol <= LAST_TEXT_COL
         ) {
           isTyping = true;
-          try {
-            keyClick.currentTime = 0;
-            keyClick.play();
-          } catch {}
+          playKeyClick();
           setTimeout(() => {
             const stack = currentData[cursorRow][cursorCol];
             const shade = Math.random() * 0.4 + 0.6;
@@ -604,9 +809,7 @@
             else if (r < SHIFT_PROB) yOffset = 1;
             stack.push({ ch: e.key, shade, yOffset });
             if (cursorCol === BELL_COL) playBell();
-            if (cursorCol < LAST_TEXT_COL) {
-              cursorCol++;
-            }
+            if (cursorCol < LAST_TEXT_COL) cursorCol++;
             renderPage();
             positionViewport();
             isTyping = false;
@@ -615,11 +818,14 @@
         e.preventDefault();
         return;
       }
-
-      // Ignore others
     }
 
-    // ─── CREATE THUMBNAIL (ignores yOffset) ───
+    function handleKeyUp(e) {
+      // nothing here for now
+    }
+
+    // ---------- THUMBNAILS & PREVIEW ----------
+
     function createThumbnail(pageStacks, index) {
       const wrapper = document.createElement('div');
       wrapper.className = 'thumbnail-wrapper';
@@ -654,11 +860,127 @@
       rightFrame.appendChild(wrapper);
 
       wrapper.addEventListener('click', () => {
+        openPreview(pageStacks, index);
+      });
+    }
+
+    function buildPreviewPaper(pageStacks) {
+      const paper = document.createElement('div');
+      paper.className = 'paper-area preview-paper';
+      paper.removeAttribute('id');
+      paper.removeAttribute('tabindex');
+
+      for (let r = 0; r < TOTAL_ROWS; r++) {
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'paper-row';
+
+        for (let c = 0; c < COLS; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+
+          if (r < TOP_MARGIN_ROWS || r >= TOP_MARGIN_ROWS + TEXT_LINES) {
+            cell.classList.add('margin');
+          } else if (c < LEFT_MARGIN || c >= COLS - RIGHT_MARGIN) {
+            cell.classList.add('margin');
+          } else {
+            cell.classList.add('textarea');
+          }
+
+          if (r >= TOP_MARGIN_ROWS && r < TOP_MARGIN_ROWS + TEXT_LINES) {
+            const stack = pageStacks[r][c];
+            if (stack.length) {
+              const stackDiv = document.createElement('span');
+              stackDiv.className = 'overstrike-stack';
+              stack.forEach((item, k) => {
+                const overSpan = document.createElement('span');
+                overSpan.textContent = item.ch;
+                overSpan.style.zIndex = 10 + k;
+                overSpan.style.color = `rgba(0,0,0,${item.shade})`;
+                overSpan.style.top = `calc(50% + ${item.yOffset}px)`;
+                stackDiv.appendChild(overSpan);
+              });
+              cell.appendChild(stackDiv);
+            }
+          }
+
+          rowDiv.appendChild(cell);
+        }
+
+        paper.appendChild(rowDiv);
+      }
+
+      return paper;
+    }
+
+    function openPreview(pageStacks, index) {
+      const overlay = document.createElement('div');
+      overlay.className = 'preview-overlay';
+
+      const dialog = document.createElement('div');
+      dialog.className = 'preview-dialog';
+
+      const header = document.createElement('div');
+      header.className = 'preview-header';
+
+      const title = document.createElement('div');
+      title.className = 'preview-title';
+      title.textContent = 'Page ' + (index + 1) + ' preview';
+
+      const btnContainer = document.createElement('div');
+      btnContainer.className = 'preview-buttons';
+
+      const downloadBtn = document.createElement('button');
+      downloadBtn.textContent = 'Download PDF';
+
+      const closeBtn = document.createElement('button');
+      closeBtn.textContent = 'Close';
+
+      btnContainer.appendChild(downloadBtn);
+      btnContainer.appendChild(closeBtn);
+
+      header.appendChild(title);
+      header.appendChild(btnContainer);
+
+      const content = document.createElement('div');
+      content.className = 'preview-content';
+
+      const previewPaper = buildPreviewPaper(pageStacks);
+      content.appendChild(previewPaper);
+
+      dialog.appendChild(header);
+      dialog.appendChild(content);
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+
+      // scale to fit width (up to 90%), never enlarge beyond natural size
+      requestAnimationFrame(() => {
+        const contentWidth = content.clientWidth;
+        const paperWidth   = previewPaper.getBoundingClientRect().width;
+        if (paperWidth > 0 && contentWidth > 0) {
+          let scale = (contentWidth * 0.9) / paperWidth;
+          if (scale > 1) scale = 1;
+          previewPaper.style.transform = `scale(${scale})`;
+        }
+      });
+
+      function closeOverlay() {
+        if (overlay && overlay.parentNode) {
+          overlay.parentNode.removeChild(overlay);
+        }
+      }
+
+      closeBtn.addEventListener('click', closeOverlay);
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeOverlay();
+      });
+
+      downloadBtn.addEventListener('click', () => {
         generatePDF(pageStacks, index);
       });
     }
 
-    // ─── GENERATE & DOWNLOAD PDF (with shading & vertical shift) ───
+    // ---------- PDF ----------
+
     function generatePDF(pageStacks, index) {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ unit: 'pt', format: 'A4' });
@@ -679,8 +1001,7 @@
           stack.forEach(item => {
             const grayVal = Math.round((1 - item.shade) * 255);
             doc.setTextColor(grayVal, grayVal, grayVal);
-            // Shift y by ±1pt if yOffset ≠ 0
-            const yShift = item.yOffset * 1; 
+            const yShift = item.yOffset * 1;
             doc.text(item.ch, x, y + yShift);
           });
           x += charWidth;
@@ -692,12 +1013,12 @@
       doc.save('page_' + (index + 1) + '.pdf');
     }
 
-    // ─── HARD RESET ───
+    // ---------- HARD RESET ----------
+
     function hardReset() {
       if (!paperDiv || !viewportElem.contains(paperDiv)) {
         pagesData = [];
-        const thumbs = rightFrame.querySelectorAll('.thumbnail-wrapper');
-        thumbs.forEach(el => el.remove());
+        rightFrame.querySelectorAll('.thumbnail-wrapper').forEach(el => el.remove());
         createPaperArea();
         return;
       }
@@ -709,8 +1030,7 @@
           if (viewportElem.contains(paperDiv)) {
             viewportElem.removeChild(paperDiv);
           }
-          const thumbs = rightFrame.querySelectorAll('.thumbnail-wrapper');
-          thumbs.forEach(el => el.remove());
+          rightFrame.querySelectorAll('.thumbnail-wrapper').forEach(el => el.remove());
           pagesData = [];
           viewportElem.style.overflow = 'hidden';
           createPaperArea();
@@ -718,18 +1038,38 @@
       }
     }
 
-    // ─── ON DOM READY ───
+    // ---------- DOM READY ----------
+
     document.addEventListener('DOMContentLoaded', () => {
       pagesData = [];
       createPaperArea();
 
       const resetBtn = document.getElementById('reset-btn');
-      if (resetBtn) {
-        resetBtn.addEventListener('click', hardReset);
+      if (resetBtn) resetBtn.addEventListener('click', hardReset);
+
+      const toggleLeftBtn = document.getElementById('toggle-left-btn');
+      if (toggleLeftBtn) {
+        toggleLeftBtn.addEventListener('click', () => {
+          document.body.classList.toggle('left-collapsed');
+          const collapsed = document.body.classList.contains('left-collapsed');
+          toggleLeftBtn.textContent = collapsed ? 'Show' : 'Hide';
+          if (paperDiv) { measureRowPx(); renderPage(); positionViewport(); }
+        });
+      }
+
+      const toggleRightBtn = document.getElementById('toggle-right-btn');
+      if (toggleRightBtn) {
+        toggleRightBtn.addEventListener('click', () => {
+          document.body.classList.toggle('right-collapsed');
+          const collapsed = document.body.classList.contains('right-collapsed');
+          toggleRightBtn.textContent = collapsed ? 'Show' : 'Hide';
+          if (paperDiv) { measureRowPx(); renderPage(); positionViewport(); }
+        });
       }
     });
 
-    // ─── ON WINDOW RESIZE ───
+    // ---------- RESIZE ----------
+
     window.addEventListener('resize', () => {
       if (paperDiv) {
         measureRowPx();
@@ -740,13 +1080,3 @@
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
