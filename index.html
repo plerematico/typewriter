@@ -123,15 +123,16 @@
       z-index: 3;
     }
 
-    @keyframes slide-out {
-      to {
-        transform: translateY(-100%);
-        opacity: 0;
-      }
-    }
-    .paper-area.paper-out {
-      animation: slide-out 1s ease-in forwards;
-    }
+@keyframes slide-out {
+  to {
+    transform: translateY(-100%); /* no opacity change */
+  }
+}
+
+.paper-area.paper-out {
+  animation: slide-out 1s ease-in forwards;
+}
+
 
     /* RIGHT PANEL */
     .right-frame {
@@ -1080,3 +1081,4 @@
   </script>
 </body>
 </html>
+
