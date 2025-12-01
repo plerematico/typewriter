@@ -8,6 +8,16 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <style>
+    :root {
+      /* Warm, cozy preview palette */
+      --preview-bg: #f2e9da;             /* outer frame background */
+      --preview-inner-bg: #e8dcc3;       /* inner content background */
+      --preview-border: #b39a79;         /* frame & inner border */
+      --preview-button-bg: #d8b38c;      /* button background */
+      --preview-button-bg-hover: #cda079;/* button hover */
+      --preview-text: #4a3728;           /* text color */
+    }
+
     html, body {
       height: 100%;
       margin: 0;
@@ -26,7 +36,7 @@
       width: 100vw;
     }
 
-    /* Small unobtrusive toggle buttons */
+    /* Tiny toggle for right panel */
     .panel-toggle {
       position: absolute;
       top: 6px;
@@ -41,50 +51,38 @@
       transition: opacity 0.2s;
     }
     .panel-toggle:hover { opacity: 1; }
-    .panel-toggle-left { left: 6px; }
     .panel-toggle-right { right: 6px; }
 
-    /* LEFT PANEL */
-    .left-frame {
-      flex: 0 0 20vw;
-      min-width: 200px;
-      background: url('photo-1585314062340-f1a5a7c9328d.avif') center/cover no-repeat;
-      border-right: 0;
-      padding: 32px 18px 24px 18px;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      transition: flex-basis 0.3s ease, padding 0.3s ease, min-width 0.3s ease;
-      color: #f5f5f5;
-      box-shadow: 6px 0 14px rgba(0, 0, 0, 0.75);
-      z-index: 2;
-    }
-    .left-frame h1 {
-      font-size: 2em;
-      margin-bottom: 0.3em;
-      font-family: 'Arial Black', Arial, sans-serif;
-      color: #fdfdfd;
-      text-shadow: 0 1px 2px #000;
-    }
-    .left-frame .desc {
-      line-height: 1.4;
-      color: #f0f0f0;
-      text-shadow: 0 1px 2px #000;
-    }
-    #reset-btn {
-      margin-top: 16px;
-      padding: 8px 12px;
-      font-size: 0.9em;
+    /* ALWAYS-VISIBLE HARD RESET BUTTON (bottom-left, two lines, 20px offset) */
+    .hard-reset-button {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      z-index: 1500;
+      padding: 4px 10px;
+      font-size: 0.8em;
+      border-radius: 4px;
+      border: none;
       background: #d9534f;
       color: #fff;
-      border: none;
-      border-radius: 4px;
       cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+      opacity: 0.95;
+      transition: opacity 0.15s ease, transform 0.1s ease, background 0.15s ease;
+      text-align: center;
+      line-height: 1.1;
+      white-space: nowrap;
     }
-    #reset-btn:hover { background: #c9302c; }
+    .hard-reset-button:hover {
+      opacity: 1;
+      background: #c9302c;
+      transform: translateY(-1px);
+    }
+    .hard-reset-button:active {
+      transform: translateY(1px);
+    }
 
-    /* CENTER PANEL (your background image) */
+    /* CENTER PANEL (background image) */
     .center-frame {
       flex: 1 1 auto;
       min-width: 0;
@@ -123,16 +121,15 @@
       z-index: 3;
     }
 
-@keyframes slide-out {
-  to {
-    transform: translateY(-100%); /* no opacity change */
-  }
-}
+    @keyframes slide-out {
+      to {
+        transform: translateY(-100%);
+      }
+    }
 
-.paper-area.paper-out {
-  animation: slide-out 1s ease-in forwards;
-}
-
+    .paper-area.paper-out {
+      animation: slide-out 1s ease-in forwards;
+    }
 
     /* RIGHT PANEL */
     .right-frame {
@@ -143,6 +140,7 @@
       padding: 10px;
       box-sizing: border-box;
       overflow-y: auto;
+      overflow-x: hidden;
       transition: flex-basis 0.3s ease, padding 0.3s ease, min-width 0.3s ease;
       color: #f5f5f5;
       box-shadow: -6px 0 14px rgba(0, 0, 0, 0.75);
@@ -167,17 +165,9 @@
       background: #ffffff;
       border: 1px solid #888;
       display: inline-block;
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 3px;
-      line-height: 4px;
-      padding: 4px 6px;              /* extra padding so right margin is visible */
-      width: 110px;                  /* slightly wider to keep proportions */
-      height: 141px;
-      overflow: hidden;
       box-sizing: border-box;
-    }
-    .thumbnail-row {
-      white-space: pre;
+      overflow: hidden;
+      position: relative;
     }
     .thumbnail-label {
       text-align: center;
@@ -187,22 +177,22 @@
       text-shadow: 0 1px 2px #000;
     }
 
-    /* PAPER GRID */
+    /* PAPER GRID with A4-ish aspect via CSS vars */
     .paper-row {
       display: flex;
-      height: 2.1em;
+      height: var(--row-height, 24px);
     }
     .cell {
       width: var(--cell-size, 24px);
       min-width: var(--cell-size, 24px);
       max-width: var(--cell-size, 24px);
-      height: 2em;
+      height: var(--row-height, 24px);
       display: flex;
       align-items: center;
       justify-content: center;
       position: relative;
       box-sizing: border-box;
-      line-height: 2em;
+      line-height: var(--row-height, 24px);
       font-family: 'Courier New', Courier, monospace;
       color: rgba(0,0,0,1);
     }
@@ -231,7 +221,7 @@
       content: "";
       position: absolute;
       width: calc(var(--cell-size, 24px) - 4px);
-      height: 1.6em;
+      height: calc(var(--row-height, 24px) * 0.8);
       border-radius: 2px;
       border: 1px solid rgba(0,0,0,0.6);
       background: rgba(200,200,200,0.45);
@@ -249,21 +239,7 @@
 
     .cell, .cell * { user-select: none; }
 
-    /* Collapsed panels */
-    body.left-collapsed .left-frame {
-      flex-basis: 12px;
-      min-width: 12px;
-      padding: 0;
-      border-right: none;
-      overflow: hidden;
-      box-shadow: 4px 0 10px rgba(0,0,0,0.8);
-    }
-    body.left-collapsed .left-frame > * {
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s ease;
-    }
-
+    /* Collapsed right panel */
     body.right-collapsed .right-frame {
       flex-basis: 12px;
       min-width: 12px;
@@ -279,7 +255,6 @@
     }
 
     @media (max-width: 900px) {
-      .left-frame { min-width: 120px; }
       .right-frame { min-width: 120px; }
     }
 
@@ -294,30 +269,30 @@
       z-index: 2000;
     }
 
-    /* warm brown/orange preview "frame" */
     .preview-dialog {
-      background: #6b3b1f; /* deep warm brown */
-      border-radius: 6px;
+      position: relative;
+      background: var(--preview-bg);
+      border-radius: 8px;
       box-shadow: 0 20px 40px rgba(0,0,0,0.7);
-      padding: 16px 18px;
-      max-width: 70vw;
-      width: 70vw;
-      max-height: 80vh;
+      padding: 12px 14px;
+      width: auto;
+      max-width: 55vw;
+      max-height: 70vh;
       display: flex;
       flex-direction: column;
       box-sizing: border-box;
-      border: 2px solid #3e2414;
+      border: 2px solid var(--preview-border);
     }
     .preview-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .preview-title {
       font-family: 'Arial Black', Arial, sans-serif;
       font-size: 1em;
-      color: #ffe7c8;
+      color: var(--preview-text);
     }
     .preview-buttons {
       display: flex;
@@ -328,22 +303,22 @@
       padding: 3px 7px;
       cursor: pointer;
       border-radius: 3px;
-      border: 1px solid #88522b;
-      background: #ffddaa;
-      color: #4a2a12;
+      border: 1px solid var(--preview-border);
+      background: var(--preview-button-bg);
+      color: var(--preview-text);
+      transition: background 0.15s ease;
     }
     .preview-buttons button:hover {
-      background: #ffd08a;
+      background: var(--preview-button-bg-hover);
     }
 
-    /* warm background behind the paper, so "extra space" feels intentional */
     .preview-content {
-      flex: 1;
+      flex: 0 1 auto;
       overflow-y: auto;
       overflow-x: hidden;
-      background: #9c5a28; /* warm orange-brown */
-      border: 1px solid #7b421d;
-      padding: 12px;
+      background: var(--preview-inner-bg);
+      border: 1px solid var(--preview-border);
+      padding: 8px;
       box-sizing: border-box;
       display: flex;
       justify-content: center;
@@ -353,46 +328,205 @@
     .preview-paper {
       box-shadow: 0 10px 20px rgba(0,0,0,0.4);
       border: 1px solid #ddd;
-      transform-origin: top center;
       display: inline-block;
       background: #ffffff;
     }
+    .preview-paper .cell.cursor::before {
+      display: none;
+    }
+
+    /* Preview page scaled to 75% via layout (not transform) */
     .preview-paper .paper-row {
-      height: 2.1em;
+      height: calc(var(--row-height) * 0.75);
     }
     .preview-paper .cell {
-      height: 2em;
-      /* font-size NOT changed here so it matches the real page exactly */
+      width: calc(var(--cell-size) * 0.75);
+      min-width: calc(var(--cell-size) * 0.75);
+      max-width: calc(var(--cell-size) * 0.75);
+      height: calc(var(--row-height) * 0.75);
+      line-height: calc(var(--row-height) * 0.75);
     }
-    .preview-paper .cell.cursor::before {
-      display: none; /* no cursor in previews */
+
+    /* Horizontal slide animations for page switching */
+    @keyframes slideOutLeft {
+      from { opacity: 1; transform: translateX(0); }
+      to   { opacity: 0; transform: translateX(-60px); }
+    }
+
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(60px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes slideOutRight {
+      from { opacity: 1; transform: translateX(0); }
+      to   { opacity: 0; transform: translateX(60px); }
+    }
+
+    @keyframes slideInLeft {
+      from { opacity: 0; transform: translateX(-60px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .preview-paper.slide-out-left  { animation: slideOutLeft 0.22s ease-out forwards; }
+    .preview-paper.slide-in-right  { animation: slideInRight 0.22s ease-out forwards; }
+    .preview-paper.slide-out-right { animation: slideOutRight 0.22s ease-out forwards; }
+    .preview-paper.slide-in-left   { animation: slideInLeft 0.22s ease-out forwards; }
+
+    /* Small popup inside preview dialog for download choices */
+    .download-prompt-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.35);
+      display: none;          /* hidden by default */
+      align-items: center;
+      justify-content: center;
+      z-index: 10;            /* sits above the preview paper */
+    }
+
+    .download-prompt-box {
+      background: #fdfaf3;
+      border: 1px solid var(--preview-border);
+      border-radius: 6px;
+      padding: 12px 16px;
+      min-width: 220px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+      font-size: 0.9rem;
+    }
+
+    .download-prompt-box p {
+      margin: 0 0 10px 0;
+    }
+
+    .download-prompt-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .download-prompt-buttons button {
+      font-size: 0.85rem;
+      padding: 3px 8px;
+      cursor: pointer;
+      border-radius: 3px;
+      border: 1px solid var(--preview-border);
+      background: var(--preview-button-bg);
+      color: var(--preview-text);
+    }
+
+    .download-prompt-buttons button:hover {
+      background: var(--preview-button-bg-hover);
+    }
+
+    /* PAGE-LOAD INFO MODAL */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 3000;
+    }
+    .modal-overlay.hidden {
+      display: none;
+    }
+    .modal-dialog {
+      max-width: 520px;
+      width: 90%;
+      background: #fdfdf8;
+      border-radius: 8px;
+      padding: 1.5rem 1.75rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+    .modal-dialog h2 {
+      margin-top: 0;
+      margin-bottom: 0.75rem;
+      font-size: 1.3rem;
+    }
+    .modal-body {
+      font-size: 0.95rem;
+      line-height: 1.5;
+      margin-bottom: 1.25rem;
+    }
+    .modal-body p + p {
+      margin-top: 0.75rem;
+    }
+    .modal-body ul {
+      margin: 0.4rem 0 0.4rem 1.2rem;
+      padding: 0;
+    }
+    .modal-body li {
+      margin-bottom: 0.2rem;
+    }
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+    }
+    .modal-confirm-button {
+      padding: 0.5rem 1.25rem;
+      font-size: 0.95rem;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      background: #2c3e50;
+      color: #fff;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+    .modal-confirm-button:hover {
+      background: #1f2a36;
+    }
+    .modal-confirm-button:active {
+      transform: translateY(1px);
+    }
+    body.modal-open {
+      overflow: hidden;
     }
   </style>
 </head>
 <body>
-  <!-- Tiny toggle buttons -->
-  <button id="toggle-left-btn" class="panel-toggle panel-toggle-left">Hide</button>
+  <!-- Always-visible Hard Reset (two-line label) -->
+  <button id="hardResetButton" class="hard-reset-button">
+    Hard<br>Reset
+  </button>
+
+  <!-- Blocking info / instructions modal -->
+  <div id="infoModal" class="modal-overlay">
+    <div class="modal-dialog">
+      <h2>Typewriter Challenge – Read before you start</h2>
+      <div class="modal-body">
+        <p>
+          This emulator behaves like a real typewriter. It does <strong>not</strong> autosave.
+          If you reload the page or use <strong>Hard Reset</strong>, everything on the page is lost.
+        </p>
+        <p><strong>Basic rules</strong></p>
+        <ul>
+          <li>No deletions or backspace erasure (Backspace only moves the cursor).</li>
+          <li>The bell rings near the end of each line.</li>
+          <li>If you keep typing without a new line, characters overstrike.</li>
+          <li>Don’t type too fast or the mechanism may “miss” some keys.</li>
+        </ul>
+        <p><strong>Shortcuts</strong></p>
+        <ul>
+          <li><strong>Enter</strong>: new line, move to left margin.</li>
+          <li><strong>Ctrl + Enter</strong>: finish the page immediately.</li>
+        </ul>
+      </div>
+      <div class="modal-footer">
+        <button id="infoModalConfirm" class="modal-confirm-button">
+          I understand
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tiny toggle button for the right panel -->
   <button id="toggle-right-btn" class="panel-toggle panel-toggle-right">Hide</button>
 
   <div class="main-layout">
-    <!-- LEFT PANEL -->
-    <div class="left-frame">
-      <h1>Typewriter Challenge</h1>
-      <div class="desc">
-        <b>Instructions</b><br>
-        - No deletions or backspace erasure.<br>
-        - Bell rings to indicate end of line.<br>
-        - Overstrike happens if no new line is added.<br>
-        - Backspace only moves cursor left.<br>
-        - Don´t type too fast!<br><br>
-        <small>
-          - Enter: new line, move to left margin.<br>
-          - Ctrl+Enter: finish the page immediately.<br>
-        </small>
-      </div>
-      <button id="reset-btn">Hard Reset</button>
-    </div>
-
     <!-- CENTER PANEL -->
     <div class="center-frame" id="center-frame">
       <div class="viewport" id="viewport">
@@ -409,15 +543,16 @@
 
   <audio id="bell" src="Ding.wav" preload="auto"></audio>
   <audio id="keypress-sound" src="type.wav" preload="auto"></audio>
-  <audio id="enter-long-sound"  src="enter.wav" preload="auto"></audio>
+  <audio id="enter-long-sound" src="enter.wav" preload="auto"></audio>
   <audio id="nokey-sound" src="nokey.wav" preload="auto"></audio>
+  <audio id="paper-out-sound" src="paper out.wav" preload="auto"></audio>
 
   <script>
     // SETTINGS & STATE
     const TOP_MARGIN_ROWS    = 2;
     const TEXT_LINES         = 35;
     const BOTTOM_MARGIN_ROWS = 2;
-    const TOTAL_ROWS         = TOP_MARGIN_ROWS + TEXT_LINES + BOTTOM_MARGIN_ROWS;
+    const TOTAL_ROWS         = TOP_MARGIN_ROWS + TEXT_LINES + BOTTOM_MARGIN_ROWS; // 39
     const COLS               = 65;
     const LEFT_MARGIN        = 5;
     const RIGHT_MARGIN       = 5;
@@ -563,31 +698,43 @@
       });
     }
 
-    // ---------- LAYOUT ----------
+    // ---------- LAYOUT (A4-ish aspect, applied via CSS vars) ----------
 
     function measureRowPx() {
-      const tempRow = document.createElement('div');
-      tempRow.className = 'paper-row';
-      const tempCell = document.createElement('div');
-      tempCell.className = 'cell textarea';
-      tempCell.textContent = 'M';
-      tempRow.appendChild(tempCell);
-      paperDiv.appendChild(tempRow);
-
-      rowPx = tempRow.getBoundingClientRect().height;
-      paperDiv.removeChild(tempRow);
-
+      // Measure monospace character width
       const probe = document.createElement('span');
       probe.style.fontFamily = "'Courier New', Courier, monospace";
       probe.style.fontSize   = "1.19em";
       probe.style.visibility = "hidden";
       probe.textContent      = "M";
       document.body.appendChild(probe);
-      const w = Math.ceil(probe.getBoundingClientRect().width) + 2;
+      const w = Math.ceil(probe.getBoundingClientRect().width) + 2; // cell width in px
       document.body.removeChild(probe);
-      paperDiv.style.setProperty('--cell-size', w + 'px');
 
-      paperDiv.style.height = (rowPx * TOTAL_ROWS) + 'px';
+      // Store as GLOBAL CSS variables so all paper instances share them
+      document.documentElement.style.setProperty('--cell-size', w + 'px');
+
+      // A4 ratio: width / height = 210 / 297
+      // pageWidth  = COLS * w
+      // pageHeight = TOTAL_ROWS * h
+      // (COLS * w) / (TOTAL_ROWS * h) = 210 / 297
+      // => w / h = (210/297) * (TOTAL_ROWS / COLS)
+      // => h = w / targetWH
+      const A4_RATIO = 210 / 297;
+      const rowsOverCols = TOTAL_ROWS / COLS;
+      const targetWH = A4_RATIO * rowsOverCols;
+
+      const h = w / targetWH; // row height in px
+
+      document.documentElement.style.setProperty('--row-height', h + 'px');
+
+      // Use this for viewport calculations
+      rowPx = h;
+
+      // Set the total paper height explicitly for the main page
+      if (paperDiv) {
+        paperDiv.style.height = (rowPx * TOTAL_ROWS) + 'px';
+      }
     }
 
     function positionViewport() {
@@ -663,6 +810,11 @@
           viewportElem.removeChild(paperDiv);
         }
         viewportElem.style.overflow = 'hidden';
+
+        // ensure we never stay "locked" after page change
+        document.body.classList.remove('hide-cursor');
+        isTyping = false;
+
         createPaperArea();
       }, { once: true });
     }
@@ -685,16 +837,20 @@
         return;
       }
 
-      // Ctrl+Enter: finish page with carriage return sound and lock
+      // Ctrl+Enter: finish page with the same "paper out" sound as Hard Reset
       if (e.key === 'Enter' && e.ctrlKey) {
         if (isTyping) { e.preventDefault(); return; }
 
         isTyping = true;
         document.body.classList.add('hide-cursor');
-        try {
-          enterLong.currentTime = 0;
-          enterLong.play();
-        } catch {}
+
+        const paperOut = document.getElementById('paper-out-sound');
+        if (paperOut) {
+          try {
+            paperOut.currentTime = 0;
+            paperOut.play();
+          } catch (e) {}
+        }
 
         setTimeout(() => {
           finishPageWithLongLock();
@@ -825,51 +981,11 @@
       // nothing here for now
     }
 
-    // ---------- THUMBNAILS & PREVIEW ----------
+    // ---------- BUILD PAGE DOM (base, no preview-specific classes) ----------
 
-    function createThumbnail(pageStacks, index) {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'thumbnail-wrapper';
-
-      const thumb = document.createElement('div');
-      thumb.className = 'thumbnail';
-
-      pageStacks.forEach(row => {
-        const rowDiv = document.createElement('div');
-        rowDiv.className = 'thumbnail-row';
-        for (let c = 0; c < COLS; c++) {
-          const stack = row[c];
-          if (stack.length) {
-            const top = stack[stack.length - 1];
-            const span = document.createElement('span');
-            span.textContent = top.ch;
-            span.style.color = `rgba(0,0,0,${top.shade})`;
-            rowDiv.appendChild(span);
-          } else {
-            rowDiv.appendChild(document.createTextNode(' '));
-          }
-        }
-        thumb.appendChild(rowDiv);
-      });
-
-      const label = document.createElement('div');
-      label.className = 'thumbnail-label';
-      label.textContent = 'Page ' + (index + 1);
-
-      wrapper.appendChild(thumb);
-      wrapper.appendChild(label);
-      rightFrame.appendChild(wrapper);
-
-      wrapper.addEventListener('click', () => {
-        openPreview(pageStacks, index);
-      });
-    }
-
-    function buildPreviewPaper(pageStacks) {
+    function buildPageDOM(pageStacks) {
       const paper = document.createElement('div');
-      paper.className = 'paper-area preview-paper';
-      paper.removeAttribute('id');
-      paper.removeAttribute('tabindex');
+      paper.className = 'paper-area';  // base; preview/thumbnail styles added later
 
       for (let r = 0; r < TOTAL_ROWS; r++) {
         const rowDiv = document.createElement('div');
@@ -913,7 +1029,50 @@
       return paper;
     }
 
-    function openPreview(pageStacks, index) {
+    // ---------- THUMBNAILS & PREVIEW ----------
+
+    function createThumbnail(pageStacks, index) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'thumbnail-wrapper';
+
+      const thumb = document.createElement('div');
+      thumb.className = 'thumbnail';
+
+      // Build base page DOM for the thumbnail
+      const miniPaper = buildPageDOM(pageStacks);
+      miniPaper.classList.add('thumbnail-paper');
+      thumb.appendChild(miniPaper);
+
+      const label = document.createElement('div');
+      label.className = 'thumbnail-label';
+      label.textContent = 'Page ' + (index + 1);
+
+      wrapper.appendChild(thumb);
+      wrapper.appendChild(label);
+      rightFrame.appendChild(wrapper);
+
+      // Scale thumbnail to a fixed target width so it's consistent
+      requestAnimationFrame(() => {
+        const rect = miniPaper.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          const targetWidth = 120; // px, tweak if you want smaller/bigger
+          const scale = targetWidth / rect.width;
+
+          miniPaper.style.transformOrigin = 'top left';
+          miniPaper.style.transform = 'scale(' + scale + ')';
+
+          thumb.style.width = targetWidth + 'px';
+          thumb.style.height = (rect.height * scale) + 'px';
+        }
+      });
+
+      // Clicking the thumbnail opens the full preview
+      wrapper.addEventListener('click', () => {
+        openPreview(pageStacks, index, pagesData);
+      });
+    }
+
+    function openPreview(pageStacks, index, pagesDataRef) {
       const overlay = document.createElement('div');
       overlay.className = 'preview-overlay';
 
@@ -930,12 +1089,25 @@
       const btnContainer = document.createElement('div');
       btnContainer.className = 'preview-buttons';
 
+      // Navigation buttons
+      const prevBtn = document.createElement('button');
+      prevBtn.textContent = '← Prev';
+      const nextBtn = document.createElement('button');
+      nextBtn.textContent = 'Next →';
+
+      if (!pagesDataRef || pagesDataRef.length <= 1) {
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+      }
+
       const downloadBtn = document.createElement('button');
       downloadBtn.textContent = 'Download PDF';
 
       const closeBtn = document.createElement('button');
       closeBtn.textContent = 'Close';
 
+      btnContainer.appendChild(prevBtn);
+      btnContainer.appendChild(nextBtn);
       btnContainer.appendChild(downloadBtn);
       btnContainer.appendChild(closeBtn);
 
@@ -945,24 +1117,85 @@
       const content = document.createElement('div');
       content.className = 'preview-content';
 
-      const previewPaper = buildPreviewPaper(pageStacks);
+      // Build preview paper (layout-scaled via CSS .preview-paper)
+      let previewPaper = buildPageDOM(pageStacks);
+      previewPaper.classList.add('preview-paper');
       content.appendChild(previewPaper);
+
+      // Download mode popup overlay (inside dialog)
+      const downloadPromptOverlay = document.createElement('div');
+      downloadPromptOverlay.className = 'download-prompt-overlay';
+
+      const downloadBox = document.createElement('div');
+      downloadBox.className = 'download-prompt-box';
+
+      const downloadText = document.createElement('p');
+      downloadText.textContent = 'Download:';
+
+      const btnRow = document.createElement('div');
+      btnRow.className = 'download-prompt-buttons';
+
+      const btnCurrent = document.createElement('button');
+      btnCurrent.textContent = 'Current page';
+
+      const btnAll = document.createElement('button');
+      btnAll.textContent = 'All pages';
+
+      const btnCancel = document.createElement('button');
+      btnCancel.textContent = 'Cancel';
+
+      btnRow.appendChild(btnCurrent);
+      btnRow.appendChild(btnAll);
+      btnRow.appendChild(btnCancel);
+
+      downloadBox.appendChild(downloadText);
+      downloadBox.appendChild(btnRow);
+      downloadPromptOverlay.appendChild(downloadBox);
 
       dialog.appendChild(header);
       dialog.appendChild(content);
+      dialog.appendChild(downloadPromptOverlay);
       overlay.appendChild(dialog);
       document.body.appendChild(overlay);
 
-      // scale to fit width (up to 90%), never enlarge beyond natural size
-      requestAnimationFrame(() => {
-        const contentWidth = content.clientWidth;
-        const paperWidth   = previewPaper.getBoundingClientRect().width;
-        if (paperWidth > 0 && contentWidth > 0) {
-          let scale = (contentWidth * 0.9) / paperWidth;
-          if (scale > 1) scale = 1;
-          previewPaper.style.transform = `scale(${scale})`;
-        }
-      });
+      // Horizontal animated page loading
+      function loadPage(newIndex, direction) {
+        if (!pagesDataRef) return;
+        if (newIndex < 0 || newIndex >= pagesDataRef.length) return;
+        if (newIndex === index) return;
+
+        const oldPaper = previewPaper;
+        const outClass = direction === 'next' ? 'slide-out-left' : 'slide-out-right';
+        const inClass  = direction === 'next' ? 'slide-in-right' : 'slide-in-left';
+
+        oldPaper.classList.add(outClass);
+        oldPaper.addEventListener('animationend', () => {
+          oldPaper.remove();
+
+          const newPaper = buildPageDOM(pagesDataRef[newIndex]);
+          newPaper.classList.add('preview-paper');
+          previewPaper = newPaper;
+          content.appendChild(newPaper);
+
+          newPaper.classList.add(inClass);
+          newPaper.addEventListener('animationend', () => {
+            newPaper.classList.remove(inClass);
+          }, { once: true });
+        }, { once: true });
+
+        title.textContent = 'Page ' + (newIndex + 1) + ' preview';
+        index = newIndex;
+      }
+
+      if (pagesDataRef && pagesDataRef.length > 1) {
+        prevBtn.addEventListener('click', () => {
+          loadPage(index - 1, 'prev');
+        });
+
+        nextBtn.addEventListener('click', () => {
+          loadPage(index + 1, 'next');
+        });
+      }
 
       function closeOverlay() {
         if (overlay && overlay.parentNode) {
@@ -975,8 +1208,29 @@
         if (e.target === overlay) closeOverlay();
       });
 
+      // Download button opens the small popup
       downloadBtn.addEventListener('click', () => {
-        generatePDF(pageStacks, index);
+        downloadPromptOverlay.style.display = 'flex';
+      });
+
+      btnCancel.addEventListener('click', () => {
+        downloadPromptOverlay.style.display = 'none';
+      });
+
+      btnCurrent.addEventListener('click', () => {
+        if (pagesDataRef && pagesDataRef[index]) {
+          generatePDF(pagesDataRef[index], index);
+        } else {
+          generatePDF(pageStacks, index);
+        }
+        downloadPromptOverlay.style.display = 'none';
+      });
+
+      btnAll.addEventListener('click', () => {
+        if (pagesDataRef && pagesDataRef.length > 0) {
+          generateAllPagesPDF(pagesDataRef);
+        }
+        downloadPromptOverlay.style.display = 'none';
       });
     }
 
@@ -1014,6 +1268,43 @@
       doc.save('page_' + (index + 1) + '.pdf');
     }
 
+    function generateAllPagesPDF(pagesDataRef) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'pt', format: 'A4' });
+
+      doc.setFont('Courier');
+      const fontSize = 14;
+      doc.setFontSize(fontSize);
+      const lineHeight = fontSize * 1.5;
+      const charWidth = doc.getTextWidth('M');
+
+      pagesDataRef.forEach((pageStacks, pageIndex) => {
+        if (pageIndex > 0) {
+          doc.addPage();
+        }
+        let y = 40;
+        const marginLeft = 40;
+
+        for (let r = 0; r < TOTAL_ROWS; r++) {
+          let x = marginLeft;
+          for (let c = 0; c < COLS; c++) {
+            const stack = pageStacks[r][c];
+            stack.forEach(item => {
+              const grayVal = Math.round((1 - item.shade) * 255);
+              doc.setTextColor(grayVal, grayVal, grayVal);
+              const yShift = item.yOffset * 1;
+              doc.text(item.ch, x, y + yShift);
+            });
+            x += charWidth;
+          }
+          doc.setTextColor(0, 0, 0);
+          y += lineHeight;
+        }
+      });
+
+      doc.save('typewriter_all_pages.pdf');
+    }
+
     // ---------- HARD RESET ----------
 
     function hardReset() {
@@ -1025,8 +1316,24 @@
       }
 
       if (!paperDiv.classList.contains('paper-out')) {
+        const paperOut = document.getElementById('paper-out-sound');
+        let animDuration = 1; // fallback in seconds
+
+        if (paperOut) {
+          try {
+            if (!isNaN(paperOut.duration) && paperOut.duration > 0) {
+              animDuration = paperOut.duration;
+            }
+            paperOut.currentTime = 0;
+            paperOut.play();
+          } catch (e) {}
+        }
+
+        paperDiv.style.animationDuration = animDuration + 's';
+
         viewportElem.style.overflow = 'visible';
         paperDiv.classList.add('paper-out');
+
         paperDiv.addEventListener('animationend', () => {
           if (viewportElem.contains(paperDiv)) {
             viewportElem.removeChild(paperDiv);
@@ -1045,17 +1352,9 @@
       pagesData = [];
       createPaperArea();
 
-      const resetBtn = document.getElementById('reset-btn');
-      if (resetBtn) resetBtn.addEventListener('click', hardReset);
-
-      const toggleLeftBtn = document.getElementById('toggle-left-btn');
-      if (toggleLeftBtn) {
-        toggleLeftBtn.addEventListener('click', () => {
-          document.body.classList.toggle('left-collapsed');
-          const collapsed = document.body.classList.contains('left-collapsed');
-          toggleLeftBtn.textContent = collapsed ? 'Show' : 'Hide';
-          if (paperDiv) { measureRowPx(); renderPage(); positionViewport(); }
-        });
+      const hardResetButton = document.getElementById('hardResetButton');
+      if (hardResetButton) {
+        hardResetButton.addEventListener('click', hardReset);
       }
 
       const toggleRightBtn = document.getElementById('toggle-right-btn');
@@ -1065,6 +1364,16 @@
           const collapsed = document.body.classList.contains('right-collapsed');
           toggleRightBtn.textContent = collapsed ? 'Show' : 'Hide';
           if (paperDiv) { measureRowPx(); renderPage(); positionViewport(); }
+        });
+      }
+
+      const modal = document.getElementById('infoModal');
+      const confirmBtn = document.getElementById('infoModalConfirm');
+      if (modal && confirmBtn) {
+        document.body.classList.add('modal-open');
+        confirmBtn.addEventListener('click', () => {
+          modal.classList.add('hidden');
+          document.body.classList.remove('modal-open');
         });
       }
     });
@@ -1081,4 +1390,3 @@
   </script>
 </body>
 </html>
-
