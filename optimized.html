@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Typewriter Challenge</title>
+
+  <!-- Include jsPDF for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    :root {
+      /* Warm, cozy preview palette */
+      --preview-bg: #f2e9da;             /* outer frame background */
+      --preview-inner-bg: #e8dcc3;       /* inner content background */
+      --preview-border: #b39a79;         /* frame & inner border */
+      --preview-button-bg: #d8b38c;      /* button background */
+      --preview-button-bg-hover: #cda079;/* button hover */
+      --preview-text: #4a3728;           /* text color */
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: #222;
+      width: 100vw;
+      box-sizing: border-box;
+      font-family: 'Courier New', Courier, monospace;
+      overflow-x: hidden;
+      overflow-y: hidden;
+    }
+
+    .main-layout {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* Tiny toggle for right panel */
+    .panel-toggle {
+      position: absolute;
+      top: 6px;
+      z-index: 1000;
+      padding: 2px 6px;
+      font-size: 0.7em;
+      border-radius: 3px;
+      border: 1px solid #aaa;
+      background: #f8f8f8;
+      opacity: 0.55;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .panel-toggle:hover { opacity: 1; }
+    .panel-toggle-right { right: 6px; }
+
+    /* ALWAYS-VISIBLE HARD RESET BUTTON (bottom-left, two lines, 20px offset) */
+    .hard-reset-button {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      z-index: 1500;
+      padding: 4px 10px;
+      font-size: 0.8em;
+      border-radius: 4px;
+      border: none;
+      background: #d9534f;
+      color: #fff;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+      opacity: 0.95;
+      transition: opacity 0.15s ease, transform 0.1s ease, background 0.15s ease;
+      text-align: center;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+    .hard-reset-button:hover {
+      opacity: 1;
+      background: #c9302c;
+      transform: translateY(-1px);
+    }
+    .hard-reset-button:active {
+      transform: translateY(1px);
+    }
+
+    /* CENTER PANEL (background image) */
+    .center-frame {
+      flex: 1 1 auto;
+      min-width: 0;
+      background: url('20251127_150242862.JPG') center/cover no-repeat;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      overflow: hidden;
+    }
+
+    .viewport {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      background: transparent;
+    }
+
+    .paper-area {
+      background: #FFFFFF;
+      border-radius: 0;
+      box-shadow: 0 60px 60px #0008;
+      border: 2.5px solid #bbb6b6;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      user-select: none;
+      width: fit-content;
+      transform-origin: top center;
+      font-family: 'Courier New', Courier, monospace;
+      z-index: 3;
+    }
+
+    @keyframes slide-out {
+      to {
+        transform: translateY(-100%);
+      }
+    }
+
+    .paper-area.paper-out {
+      animation: slide-out 1s ease-in forwards;
+    }
+
+    /* RIGHT PANEL */
+    .right-frame {
+      flex: 0 0 15vw;
+      min-width: 150px;
+      background: url('photo-1585314062340-f1a5a7c9328d.avif') center/cover no-repeat;
+      border-left: 0;
+      padding: 10px;
+      box-sizing: border-box;
+      overflow-y: auto;
+      overflow-x: hidden;
+      transition: flex-basis 0.3s ease, padding 0.3s ease, min-width 0.3s ease;
+      color: #f5f5f5;
+      box-shadow: -6px 0 14px rgba(0, 0, 0, 0.75);
+      z-index: 2;
+    }
+    .right-frame h2 {
+      margin-top: 0;
+      font-size: 1.2em;
+      font-family: 'Arial Black', Arial, sans-serif;
+      color: #fdfdfd;
+      text-shadow: 0 1px 2px #000;
+    }
+
+    .thumbnail-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    .thumbnail {
+      background: #ffffff;
+      border: 1px solid #888;
+      display: inline-block;
+      box-sizing: border-box;
+      overflow: hidden;
+      position: relative;
+    }
+    .thumbnail-label {
+      text-align: center;
+      margin-top: 4px;
+      font-size: 0.8em;
+      color: #f5f5f5;
+      text-shadow: 0 1px 2px #000;
+    }
+
+    /* PAPER GRID with A4-ish aspect via CSS vars */
+    .paper-row {
+      display: flex;
+      height: var(--row-height, 24px);
+    }
+    .cell {
+      width: var(--cell-size, 24px);
+      min-width: var(--cell-size, 24px);
+      max-width: var(--cell-size, 24px);
+      height: var(--row-height, 24px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      box-sizing: border-box;
+      line-height: var(--row-height, 24px);
+      font-family: 'Courier New', Courier, monospace;
+      color: rgba(0,0,0,1);
+    }
+    .cell.margin { background: #fff; }
+    .cell.textarea { background: #fff; }
+
+    .cell .overstrike-stack {
+      position: relative;
+      display: inline-block;
+    }
+    .cell .overstrike-stack span {
+      position: absolute;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      font-weight: bold;
+      text-shadow: 0 0 3px #fff7, 1px 1px 1px #2321;
+    }
+
+    /* Cursor box */
+    @keyframes blinkBox {
+      0%, 50% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+    .cell.cursor::before {
+      content: "";
+      position: absolute;
+      width: calc(var(--cell-size, 24px) - 4px);
+      height: calc(var(--row-height, 24px) * 0.8);
+      border-radius: 2px;
+      border: 1px solid rgba(0,0,0,0.6);
+      background: rgba(200,200,200,0.45);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      box-sizing: border-box;
+      animation: blinkBox 1.2s steps(1) infinite;
+    }
+
+    /* Hide cursor while long Enter sound is playing */
+    .hide-cursor .cell.cursor::before {
+      display: none;
+    }
+
+    .cell, .cell * { user-select: none; }
+
+    /* Collapsed right panel */
+    body.right-collapsed .right-frame {
+      flex-basis: 12px;
+      min-width: 12px;
+      padding: 0;
+      border-left: none;
+      overflow: hidden;
+      box-shadow: -4px 0 10px rgba(0,0,0,0.8);
+    }
+    body.right-collapsed .right-frame > * {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    @media (max-width: 900px) {
+      .right-frame { min-width: 120px; }
+    }
+
+    /* PREVIEW OVERLAY */
+    .preview-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .preview-dialog {
+      position: relative;
+      background: var(--preview-bg);
+      border-radius: 8px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.7);
+      padding: 12px 14px;
+      width: auto;
+      max-width: 55vw;
+      max-height: 70vh;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      border: 2px solid var(--preview-border);
+    }
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .preview-title {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 1em;
+      color: var(--preview-text);
+    }
+    .preview-buttons {
+      display: flex;
+      gap: 6px;
+    }
+    .preview-buttons button {
+      font-size: 0.8em;
+      padding: 3px 7px;
+      cursor: pointer;
+      border-radius: 3px;
+      border: 1px solid var(--preview-border);
+      background: var(--preview-button-bg);
+      color: var(--preview-text);
+      transition: background 0.15s ease;
+    }
+    .preview-buttons button:hover {
+      background: var(--preview-button-bg-hover);
+    }
+
+    .preview-content {
+      flex: 0 1 auto;
+      overflow-y: auto;
+      overflow-x: hidden;
+      background: var(--preview-inner-bg);
+      border: 1px solid var(--preview-border);
+      padding: 8px;
+      box-sizing: border-box;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .preview-paper {
+      box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+      border: 1px solid #ddd;
+      display: inline-block;
+      background: #ffffff;
+    }
+    .preview-paper .cell.cursor::before {
+      display: none;
+    }
+
+    /* Preview page scaled to 75% via layout (not transform) */
+    .preview-paper .paper-row {
+      height: calc(var(--row-height) * 0.75);
+    }
+    .preview-paper .cell {
+      width: calc(var(--cell-size) * 0.75);
+      min-width: calc(var(--cell-size) * 0.75);
+      max-width: calc(var(--cell-size) * 0.75);
+      height: calc(var(--row-height) * 0.75);
+      line-height: calc(var(--row-height) * 0.75);
+    }
+
+    /* Horizontal slide animations for page switching */
+    @keyframes slideOutLeft {
+      from { opacity: 1; transform: translateX(0); }
+      to   { opacity: 0; transform: translateX(-60px); }
+    }
+
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(60px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes slideOutRight {
+      from { opacity: 1; transform: translateX(0); }
+      to   { opacity: 0; transform: translateX(60px); }
+    }
+
+    @keyframes slideInLeft {
+      from { opacity: 0; transform: translateX(-60px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .preview-paper.slide-out-left  { animation: slideOutLeft 0.22s ease-out forwards; }
+    .preview-paper.slide-in-right  { animation: slideInRight 0.22s ease-out forwards; }
+    .preview-paper.slide-out-right { animation: slideOutRight 0.22s ease-out forwards; }
+    .preview-paper.slide-in-left   { animation: slideInLeft 0.22s ease-out forwards; }
+
+    /* Small popup inside preview dialog for download choices */
+    .download-prompt-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.35);
+      display: none;          /* hidden by default */
+      align-items: center;
+      justify-content: center;
+      z-index: 10;            /* sits above the preview paper */
+    }
+
+    .download-prompt-box {
+      background: #fdfaf3;
+      border: 1px solid var(--preview-border);
+      border-radius: 6px;
+      padding: 12px 16px;
+      min-width: 220px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+      font-size: 0.9rem;
+    }
+
+    .download-prompt-box p {
+      margin: 0 0 10px 0;
+    }
+
+    .download-prompt-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .download-prompt-buttons button {
+      font-size: 0.85rem;
+      padding: 3px 8px;
+      cursor: pointer;
+      border-radius: 3px;
+      border: 1px solid var(--preview-border);
+      background: var(--preview-button-bg);
+      color: var(--preview-text);
+    }
+
+    .download-prompt-buttons button:hover {
+      background: var(--preview-button-bg-hover);
+    }
+
+    /* PAGE-LOAD INFO MODAL */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 3000;
+    }
+    .modal-overlay.hidden {
+      display: none;
+    }
+    .modal-dialog {
+      max-width: 520px;
+      width: 90%;
+      background: #fdfdf8;
+      border-radius: 8px;
+      padding: 1.5rem 1.75rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+    .modal-dialog h2 {
+      margin-top: 0;
+      margin-bottom: 0.75rem;
+      font-size: 1.3rem;
+    }
+    .modal-body {
+      font-size: 0.95rem;
+      line-height: 1.5;
+      margin-bottom: 1.25rem;
+    }
+    .modal-body p + p {
+      margin-top: 0.75rem;
+    }
+    .modal-body ul {
+      margin: 0.4rem 0 0.4rem 1.2rem;
+      padding: 0;
+    }
+    .modal-body li {
+      margin-bottom: 0.2rem;
+    }
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+    }
+    .modal-confirm-button {
+      padding: 0.5rem 1.25rem;
+      font-size: 0.95rem;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      background: #2c3e50;
+      color: #fff;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+    .modal-confirm-button:hover {
+      background: #1f2a36;
+    }
+    .modal-confirm-button:active {
+      transform: translateY(1px);
+    }
+    body.modal-open {
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <!-- Always-visible Hard Reset (two-line label) -->
+  <button id="hardResetButton" class="hard-reset-button">
+    Hard<br>Reset
+  </button>
+
+  <!-- Blocking info / instructions modal -->
+  <div id="infoModal" class="modal-overlay">
+    <div class="modal-dialog">
+      <h2>Typewriter Challenge – Read before you start</h2>
+      <div class="modal-body">
+        <p>
+          This emulator behaves like a real typewriter. It does <strong>not</strong> autosave.
+          If you reload the page or use <strong>Hard Reset</strong>, everything on the page is lost.
+        </p>
+        <p><strong>Basic rules</strong></p>
+        <ul>
+          <li>No deletions or backspace erasure (Backspace only moves the cursor).</li>
+          <li>The bell rings near the end of each line.</li>
+          <li>If you keep typing without a new line, characters overstrike.</li>
+          <li>Don’t type too fast or the mechanism may “miss” some keys.</li>
+        </ul>
+        <p><strong>Shortcuts</strong></p>
+        <ul>
+          <li><strong>Enter</strong>: new line, move to left margin.</li>
+          <li><strong>Ctrl + Enter</strong>: finish the page immediately.</li>
+        </ul>
+      </div>
+      <div class="modal-footer">
+        <button id="infoModalConfirm" class="modal-confirm-button">
+          I understand
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tiny toggle button for the right panel -->
+  <button id="toggle-right-btn" class="panel-toggle panel-toggle-right">Hide</button>
+
+  <div class="main-layout">
+    <!-- CENTER PANEL -->
+    <div class="center-frame" id="center-frame">
+      <div class="viewport" id="viewport">
+        <!-- JS injects paper-area here -->
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-frame" id="right-frame">
+      <h2>Finished Pages</h2>
+      <!-- Thumbnails appear here -->
+    </div>
+  </div>
+
+  <audio id="bell" src="Ding.wav" preload="auto"></audio>
+  <audio id="keypress-sound" src="type.wav" preload="auto"></audio>
+  <audio id="enter-long-sound" src="enter.wav" preload="auto"></audio>
+  <audio id="nokey-sound" src="nokey.wav" preload="auto"></audio>
+  <audio id="paper-out-sound" src="paper out.wav" preload="auto"></audio>
+
+  <script>
+    // SETTINGS & STATE
+    const TOP_MARGIN_ROWS    = 2;
+    const TEXT_LINES         = 35;
+    const BOTTOM_MARGIN_ROWS = 2;
+    const TOTAL_ROWS         = TOP_MARGIN_ROWS + TEXT_LINES + BOTTOM_MARGIN_ROWS; // 39
+    const COLS               = 65;
+    const LEFT_MARGIN        = 5;
+    const RIGHT_MARGIN       = 5;
+    const TEXT_COLS          = 55;
+    const FIRST_TEXT_COL     = LEFT_MARGIN;
+    const LAST_TEXT_COL      = FIRST_TEXT_COL + TEXT_COLS - 1;
+    const BELL_COL           = FIRST_TEXT_COL + TEXT_COLS - 5;
+
+    const VISIBLE_INITIAL    = 3;
+    const SHORT_DELAY        = 50;
+    const SHIFT_PROB         = 0.1;
+    const ENTER_ACTION_DELAY = 60;
+
+    const viewportElem = document.getElementById('viewport');
+    const rightFrame   = document.getElementById('right-frame');
+    const bell         = document.getElementById('bell');
+    const keyClick     = document.getElementById('keypress-sound');
+    const enterLong    = document.getElementById('enter-long-sound');
+    const nokeySound   = document.getElementById('nokey-sound');
+
+    let pagesData = [];
+    let currentData;
+    let cursorRow, cursorCol;
+    let paperDiv;
+    let rowPx = 0;
+    let isTyping = false;
+    let cellGrid = [];
+    let currentCursorCell = null;
+    let measuredCellPx = null;
+    let measuredRowHeightPx = null;
+
+    let audioWarmed = false;
+    let canPlayKeySound = true;
+
+    enterLong.addEventListener('ended', () => {
+      document.body.classList.remove('hide-cursor');
+      isTyping = false;
+    });
+
+    // ---------- AUDIO HELPERS ----------
+
+    function warmUpAudio() {
+      if (audioWarmed) return;
+      audioWarmed = true;
+
+      const sounds = [keyClick, enterLong, bell, nokeySound];
+      sounds.forEach(a => {
+        if (!a) return;
+        const oldVol = a.volume;
+        a.volume = 0;
+        try {
+          a.currentTime = 0;
+          const p = a.play();
+          if (p && typeof p.catch === 'function') {
+            p.catch(() => {});
+          }
+        } catch {}
+        setTimeout(() => {
+          try {
+            a.pause();
+            a.currentTime = 0;
+          } catch {}
+          a.volume = oldVol;
+        }, 250);
+      });
+    }
+
+    function playKeyClick() {
+      if (!canPlayKeySound) return;
+      try {
+        keyClick.pause();
+        keyClick.currentTime = 0;
+        keyClick.play();
+      } catch {}
+    }
+
+    function playBell() {
+      try {
+        canPlayKeySound = false;
+        keyClick.pause();
+        keyClick.currentTime = 0;
+
+        bell.currentTime = 0;
+        const p = bell.play();
+        if (p && typeof p.catch === 'function') {
+          p.catch(() => { canPlayKeySound = true; });
+        }
+        bell.onended = () => {
+          canPlayKeySound = true;
+        };
+      } catch {
+        if (window.AudioContext) {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const o   = ctx.createOscillator();
+          const g   = ctx.createGain();
+          o.type = 'sine';
+          o.frequency.value = 920;
+          g.gain.value = 0.07;
+          o.connect(g);
+          g.connect(ctx.destination);
+          o.start();
+          o.stop(ctx.currentTime + 0.13);
+          setTimeout(() => {
+            canPlayKeySound = true;
+            ctx.close();
+          }, 200);
+        }
+      }
+    }
+
+    // ---------- PAGE INIT ----------
+
+    function initBlankPage() {
+      currentData = [];
+      for (let r = 0; r < TOTAL_ROWS; r++) {
+        const row = [];
+        for (let c = 0; c < COLS; c++) row.push([]);
+        currentData.push(row);
+      }
+      cursorRow = TOP_MARGIN_ROWS;
+      cursorCol = FIRST_TEXT_COL;
+    }
+
+    function createPaperArea() {
+      initBlankPage();
+      if (paperDiv && viewportElem.contains(paperDiv)) {
+        viewportElem.removeChild(paperDiv);
+      }
+      paperDiv = document.createElement('div');
+      paperDiv.className = 'paper-area';
+      paperDiv.id = 'paper-area';
+      paperDiv.setAttribute('tabindex', '0');
+      viewportElem.appendChild(paperDiv);
+
+      paperDiv.addEventListener('keydown', handleKey);
+      paperDiv.addEventListener('keyup', handleKeyUp);
+      paperDiv.addEventListener('mousedown', e => {
+        paperDiv.focus();
+        e.preventDefault();
+      });
+
+      requestAnimationFrame(() => {
+        measureRowPx();
+        buildPaperGrid();
+        renderPage();
+        positionViewport();
+        paperDiv.focus();
+      });
+    }
+
+    // ---------- LAYOUT (A4-ish aspect, applied via CSS vars) ----------
+
+    function measureRowPx() {
+      if (measuredCellPx === null || measuredRowHeightPx === null) {
+        const probe = document.createElement('span');
+        probe.style.fontFamily = "'Courier New', Courier, monospace";
+        probe.style.fontSize   = "1.19em";
+        probe.style.visibility = "hidden";
+        probe.textContent      = "M";
+        document.body.appendChild(probe);
+        measuredCellPx = Math.ceil(probe.getBoundingClientRect().width) + 2; // cell width in px
+        document.body.removeChild(probe);
+
+        const A4_RATIO = 210 / 297;
+        const rowsOverCols = TOTAL_ROWS / COLS;
+        const targetWH = A4_RATIO * rowsOverCols;
+        measuredRowHeightPx = measuredCellPx / targetWH; // row height in px
+      }
+
+      document.documentElement.style.setProperty('--cell-size', measuredCellPx + 'px');
+      document.documentElement.style.setProperty('--row-height', measuredRowHeightPx + 'px');
+
+      rowPx = measuredRowHeightPx;
+
+      if (paperDiv) {
+        paperDiv.style.height = (rowPx * TOTAL_ROWS) + 'px';
+      }
+    }
+
+    function positionViewport() {
+      const visibleRows = Math.max(VISIBLE_INITIAL, cursorRow + 2);
+      viewportElem.style.height = (rowPx * visibleRows) + 'px';
+      viewportElem.style.bottom = '0';
+      viewportElem.style.left = '0';
+      viewportElem.style.right = '0';
+    }
+
+    function buildPaperGrid() {
+      cellGrid = [];
+      currentCursorCell = null;
+      paperDiv.innerHTML = '';
+
+      for (let r = 0; r < TOTAL_ROWS; r++) {
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'paper-row';
+
+        const rowCells = [];
+        for (let c = 0; c < COLS; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+
+          if (r < TOP_MARGIN_ROWS || r >= TOP_MARGIN_ROWS + TEXT_LINES) {
+            cell.classList.add('margin');
+          } else if (c < LEFT_MARGIN || c >= COLS - RIGHT_MARGIN) {
+            cell.classList.add('margin');
+          } else {
+            cell.classList.add('textarea');
+          }
+
+          rowCells.push(cell);
+          rowDiv.appendChild(cell);
+        }
+
+        cellGrid.push(rowCells);
+        paperDiv.appendChild(rowDiv);
+      }
+    }
+
+    function updateCellContent(r, c) {
+      const cell = cellGrid?.[r]?.[c];
+      if (!cell) return;
+
+      cell.innerHTML = '';
+
+      if (r >= TOP_MARGIN_ROWS && r < TOP_MARGIN_ROWS + TEXT_LINES && c >= FIRST_TEXT_COL && c <= LAST_TEXT_COL) {
+        const stack = currentData[r][c];
+        if (stack.length) {
+          const stackDiv = document.createElement('span');
+          stackDiv.className = 'overstrike-stack';
+          stack.forEach((item, k) => {
+            const overSpan = document.createElement('span');
+            overSpan.textContent = item.ch;
+            overSpan.style.zIndex = 10 + k;
+            overSpan.style.color = `rgba(0,0,0,${item.shade})`;
+            overSpan.style.top = `calc(50% + ${item.yOffset}px)`;
+            stackDiv.appendChild(overSpan);
+          });
+          cell.appendChild(stackDiv);
+        }
+      }
+    }
+
+    function updateCursorHighlight() {
+      if (currentCursorCell) currentCursorCell.classList.remove('cursor');
+      currentCursorCell = null;
+
+      const isCursorWithinText =
+        cursorRow >= TOP_MARGIN_ROWS &&
+        cursorRow < TOP_MARGIN_ROWS + TEXT_LINES &&
+        cursorCol >= FIRST_TEXT_COL &&
+        cursorCol <= LAST_TEXT_COL;
+
+      if (isCursorWithinText) {
+        const cell = cellGrid?.[cursorRow]?.[cursorCol];
+        if (cell) {
+          cell.classList.add('cursor');
+          currentCursorCell = cell;
+        }
+      }
+    }
+
+    function renderPage(changedCells = null) {
+      if (!paperDiv || !cellGrid.length) return;
+
+      if (changedCells === null) {
+        for (let r = TOP_MARGIN_ROWS; r < TOP_MARGIN_ROWS + TEXT_LINES; r++) {
+          for (let c = FIRST_TEXT_COL; c <= LAST_TEXT_COL; c++) {
+            updateCellContent(r, c);
+          }
+        }
+      } else if (changedCells.length) {
+        changedCells.forEach(([r, c]) => {
+          if (
+            r >= TOP_MARGIN_ROWS &&
+            r < TOP_MARGIN_ROWS + TEXT_LINES &&
+            c >= FIRST_TEXT_COL &&
+            c <= LAST_TEXT_COL
+          ) {
+            updateCellContent(r, c);
+          }
+        });
+      }
+
+      updateCursorHighlight();
+    }
+
+    // ---------- PAGE FINISH HELPERS ----------
+
+    function finishPageWithLongLock() {
+      const pageStacks = typeof structuredClone === 'function'
+        ? structuredClone(currentData)
+        : currentData.map(row => row.map(stack => stack.map(item => ({ ...item }))));
+      pagesData.push(pageStacks);
+      createThumbnail(pageStacks, pagesData.length - 1);
+
+      viewportElem.style.overflow = 'visible';
+      paperDiv.classList.add('paper-out');
+      paperDiv.addEventListener('animationend', () => {
+        if (viewportElem.contains(paperDiv)) {
+          viewportElem.removeChild(paperDiv);
+        }
+        viewportElem.style.overflow = 'hidden';
+
+        // ensure we never stay "locked" after page change
+        document.body.classList.remove('hide-cursor');
+        isTyping = false;
+
+        createPaperArea();
+      }, { once: true });
+    }
+
+    // ---------- KEY HANDLERS ----------
+
+    function handleKey(e) {
+      if (document.activeElement !== paperDiv) paperDiv.focus();
+
+      if (!audioWarmed) warmUpAudio();
+
+      if (e.repeat && e.key !== 'Enter') {
+        e.preventDefault();
+        return;
+      }
+
+      if (e.key === 'Tab') { e.preventDefault(); return; }
+      if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) {
+        e.preventDefault();
+        return;
+      }
+
+      // Ctrl+Enter: finish page with the same "paper out" sound as Hard Reset
+      if (e.key === 'Enter' && e.ctrlKey) {
+        if (isTyping) { e.preventDefault(); return; }
+
+        isTyping = true;
+        document.body.classList.add('hide-cursor');
+
+        const paperOut = document.getElementById('paper-out-sound');
+        if (paperOut) {
+          try {
+            paperOut.currentTime = 0;
+            paperOut.play();
+          } catch (e) {}
+        }
+
+        setTimeout(() => {
+          finishPageWithLongLock();
+        }, ENTER_ACTION_DELAY);
+
+        e.preventDefault();
+        return;
+      }
+
+      // Enter: single behavior (carriage return)
+      if (e.key === 'Enter') {
+        if (isTyping) { e.preventDefault(); return; }
+        if (e.repeat) { e.preventDefault(); return; }
+
+        isTyping = true;
+        document.body.classList.add('hide-cursor');
+        try {
+          enterLong.currentTime = 0;
+          enterLong.play();
+        } catch {}
+
+        const lastTextRow = TOP_MARGIN_ROWS + TEXT_LINES - 1;
+
+        if (cursorRow < lastTextRow) {
+          setTimeout(() => {
+            cursorRow++;
+            cursorCol = FIRST_TEXT_COL;
+            renderPage([]);
+            positionViewport();
+          }, ENTER_ACTION_DELAY);
+        } else {
+          setTimeout(() => {
+            finishPageWithLongLock();
+          }, ENTER_ACTION_DELAY);
+        }
+
+        e.preventDefault();
+        return;
+      }
+
+      // Backspace
+      if (e.key === 'Backspace') {
+        if (isTyping) { e.preventDefault(); return; }
+        isTyping = true;
+        try {
+          nokeySound.currentTime = 0;
+          nokeySound.play();
+        } catch {}
+        setTimeout(() => {
+          if (cursorCol > FIRST_TEXT_COL) {
+            cursorCol--;
+          } else if (cursorCol === FIRST_TEXT_COL && cursorRow > TOP_MARGIN_ROWS) {
+            cursorRow--;
+            cursorCol = LAST_TEXT_COL;
+          }
+          renderPage([]);
+          positionViewport();
+          isTyping = false;
+        }, SHORT_DELAY);
+        e.preventDefault();
+        return;
+      }
+
+      // Space
+      if (e.key === ' ') {
+        if (isTyping) { e.preventDefault(); return; }
+        if (
+          cursorRow >= TOP_MARGIN_ROWS &&
+          cursorRow < TOP_MARGIN_ROWS + TEXT_LINES &&
+          cursorCol >= FIRST_TEXT_COL &&
+          cursorCol <= LAST_TEXT_COL
+        ) {
+          isTyping = true;
+          try {
+            nokeySound.currentTime = 0;
+            nokeySound.play();
+          } catch {}
+          setTimeout(() => {
+            const prevRow = cursorRow;
+            const prevCol = cursorCol;
+            const stack = currentData[prevRow][prevCol];
+            const shade = Math.random() * 0.4 + 0.6;
+            let yOffset = 0;
+            const r = Math.random();
+            if (r < SHIFT_PROB / 2) yOffset = -1;
+            else if (r < SHIFT_PROB) yOffset = 1;
+            stack.push({ ch: ' ', shade, yOffset });
+            if (cursorCol < LAST_TEXT_COL) cursorCol++;
+            renderPage([[prevRow, prevCol]]);
+            positionViewport();
+            isTyping = false;
+          }, SHORT_DELAY);
+        }
+        e.preventDefault();
+        return;
+      }
+
+      // Printable characters
+      if (e.key.length === 1) {
+        if (isTyping) { e.preventDefault(); return; }
+        if (
+          cursorRow >= TOP_MARGIN_ROWS &&
+          cursorRow < TOP_MARGIN_ROWS + TEXT_LINES &&
+          cursorCol >= FIRST_TEXT_COL &&
+          cursorCol <= LAST_TEXT_COL
+        ) {
+          isTyping = true;
+          playKeyClick();
+          setTimeout(() => {
+            const prevRow = cursorRow;
+            const prevCol = cursorCol;
+            const stack = currentData[prevRow][prevCol];
+            const shade = Math.random() * 0.4 + 0.6;
+            let yOffset = 0;
+            const r = Math.random();
+            if (r < SHIFT_PROB / 2) yOffset = -1;
+            else if (r < SHIFT_PROB) yOffset = 1;
+            stack.push({ ch: e.key, shade, yOffset });
+            if (cursorCol === BELL_COL) playBell();
+            if (cursorCol < LAST_TEXT_COL) cursorCol++;
+            renderPage([[prevRow, prevCol]]);
+            positionViewport();
+            isTyping = false;
+          }, SHORT_DELAY);
+        }
+        e.preventDefault();
+        return;
+      }
+    }
+
+    function handleKeyUp(e) {
+      // nothing here for now
+    }
+
+    // ---------- BUILD PAGE DOM (base, no preview-specific classes) ----------
+
+    function buildPageDOM(pageStacks) {
+      const paper = document.createElement('div');
+      paper.className = 'paper-area';  // base; preview/thumbnail styles added later
+
+      for (let r = 0; r < TOTAL_ROWS; r++) {
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'paper-row';
+
+        for (let c = 0; c < COLS; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+
+          if (r < TOP_MARGIN_ROWS || r >= TOP_MARGIN_ROWS + TEXT_LINES) {
+            cell.classList.add('margin');
+          } else if (c < LEFT_MARGIN || c >= COLS - RIGHT_MARGIN) {
+            cell.classList.add('margin');
+          } else {
+            cell.classList.add('textarea');
+          }
+
+          if (r >= TOP_MARGIN_ROWS && r < TOP_MARGIN_ROWS + TEXT_LINES) {
+            const stack = pageStacks[r][c];
+            if (stack.length) {
+              const stackDiv = document.createElement('span');
+              stackDiv.className = 'overstrike-stack';
+              stack.forEach((item, k) => {
+                const overSpan = document.createElement('span');
+                overSpan.textContent = item.ch;
+                overSpan.style.zIndex = 10 + k;
+                overSpan.style.color = `rgba(0,0,0,${item.shade})`;
+                overSpan.style.top = `calc(50% + ${item.yOffset}px)`;
+                stackDiv.appendChild(overSpan);
+              });
+              cell.appendChild(stackDiv);
+            }
+          }
+
+          rowDiv.appendChild(cell);
+        }
+
+        paper.appendChild(rowDiv);
+      }
+
+      return paper;
+    }
+
+    // ---------- THUMBNAILS & PREVIEW ----------
+
+    function createThumbnail(pageStacks, index) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'thumbnail-wrapper';
+
+      const thumb = document.createElement('div');
+      thumb.className = 'thumbnail';
+
+      // Build base page DOM for the thumbnail
+      const miniPaper = buildPageDOM(pageStacks);
+      miniPaper.classList.add('thumbnail-paper');
+      thumb.appendChild(miniPaper);
+
+      const label = document.createElement('div');
+      label.className = 'thumbnail-label';
+      label.textContent = 'Page ' + (index + 1);
+
+      wrapper.appendChild(thumb);
+      wrapper.appendChild(label);
+      rightFrame.appendChild(wrapper);
+
+      // Scale thumbnail to a fixed target width so it's consistent
+      requestAnimationFrame(() => {
+        const rect = miniPaper.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          const targetWidth = 120; // px, tweak if you want smaller/bigger
+          const scale = targetWidth / rect.width;
+
+          miniPaper.style.transformOrigin = 'top left';
+          miniPaper.style.transform = 'scale(' + scale + ')';
+
+          thumb.style.width = targetWidth + 'px';
+          thumb.style.height = (rect.height * scale) + 'px';
+        }
+      });
+
+      // Clicking the thumbnail opens the full preview
+      wrapper.addEventListener('click', () => {
+        openPreview(pageStacks, index, pagesData);
+      });
+    }
+
+    function openPreview(pageStacks, index, pagesDataRef) {
+      const overlay = document.createElement('div');
+      overlay.className = 'preview-overlay';
+
+      const dialog = document.createElement('div');
+      dialog.className = 'preview-dialog';
+
+      const header = document.createElement('div');
+      header.className = 'preview-header';
+
+      const title = document.createElement('div');
+      title.className = 'preview-title';
+      title.textContent = 'Page ' + (index + 1) + ' preview';
+
+      const btnContainer = document.createElement('div');
+      btnContainer.className = 'preview-buttons';
+
+      // Navigation buttons
+      const prevBtn = document.createElement('button');
+      prevBtn.textContent = '← Prev';
+      const nextBtn = document.createElement('button');
+      nextBtn.textContent = 'Next →';
+
+      if (!pagesDataRef || pagesDataRef.length <= 1) {
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+      }
+
+      const downloadBtn = document.createElement('button');
+      downloadBtn.textContent = 'Download PDF';
+
+      const closeBtn = document.createElement('button');
+      closeBtn.textContent = 'Close';
+
+      btnContainer.appendChild(prevBtn);
+      btnContainer.appendChild(nextBtn);
+      btnContainer.appendChild(downloadBtn);
+      btnContainer.appendChild(closeBtn);
+
+      header.appendChild(title);
+      header.appendChild(btnContainer);
+
+      const content = document.createElement('div');
+      content.className = 'preview-content';
+
+      // Build preview paper (layout-scaled via CSS .preview-paper)
+      let previewPaper = buildPageDOM(pageStacks);
+      previewPaper.classList.add('preview-paper');
+      content.appendChild(previewPaper);
+
+      // Download mode popup overlay (inside dialog)
+      const downloadPromptOverlay = document.createElement('div');
+      downloadPromptOverlay.className = 'download-prompt-overlay';
+
+      const downloadBox = document.createElement('div');
+      downloadBox.className = 'download-prompt-box';
+
+      const downloadText = document.createElement('p');
+      downloadText.textContent = 'Download:';
+
+      const btnRow = document.createElement('div');
+      btnRow.className = 'download-prompt-buttons';
+
+      const btnCurrent = document.createElement('button');
+      btnCurrent.textContent = 'Current page';
+
+      const btnAll = document.createElement('button');
+      btnAll.textContent = 'All pages';
+
+      const btnCancel = document.createElement('button');
+      btnCancel.textContent = 'Cancel';
+
+      btnRow.appendChild(btnCurrent);
+      btnRow.appendChild(btnAll);
+      btnRow.appendChild(btnCancel);
+
+      downloadBox.appendChild(downloadText);
+      downloadBox.appendChild(btnRow);
+      downloadPromptOverlay.appendChild(downloadBox);
+
+      dialog.appendChild(header);
+      dialog.appendChild(content);
+      dialog.appendChild(downloadPromptOverlay);
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+
+      // Horizontal animated page loading
+      function loadPage(newIndex, direction) {
+        if (!pagesDataRef) return;
+        if (newIndex < 0 || newIndex >= pagesDataRef.length) return;
+        if (newIndex === index) return;
+
+        const oldPaper = previewPaper;
+        const outClass = direction === 'next' ? 'slide-out-left' : 'slide-out-right';
+        const inClass  = direction === 'next' ? 'slide-in-right' : 'slide-in-left';
+
+        oldPaper.classList.add(outClass);
+        oldPaper.addEventListener('animationend', () => {
+          oldPaper.remove();
+
+          const newPaper = buildPageDOM(pagesDataRef[newIndex]);
+          newPaper.classList.add('preview-paper');
+          previewPaper = newPaper;
+          content.appendChild(newPaper);
+
+          newPaper.classList.add(inClass);
+          newPaper.addEventListener('animationend', () => {
+            newPaper.classList.remove(inClass);
+          }, { once: true });
+        }, { once: true });
+
+        title.textContent = 'Page ' + (newIndex + 1) + ' preview';
+        index = newIndex;
+      }
+
+      if (pagesDataRef && pagesDataRef.length > 1) {
+        prevBtn.addEventListener('click', () => {
+          loadPage(index - 1, 'prev');
+        });
+
+        nextBtn.addEventListener('click', () => {
+          loadPage(index + 1, 'next');
+        });
+      }
+
+      function closeOverlay() {
+        if (overlay && overlay.parentNode) {
+          overlay.parentNode.removeChild(overlay);
+        }
+      }
+
+      closeBtn.addEventListener('click', closeOverlay);
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeOverlay();
+      });
+
+      // Download button opens the small popup
+      downloadBtn.addEventListener('click', () => {
+        downloadPromptOverlay.style.display = 'flex';
+      });
+
+      btnCancel.addEventListener('click', () => {
+        downloadPromptOverlay.style.display = 'none';
+      });
+
+      btnCurrent.addEventListener('click', () => {
+        if (pagesDataRef && pagesDataRef[index]) {
+          generatePDF(pagesDataRef[index], index);
+        } else {
+          generatePDF(pageStacks, index);
+        }
+        downloadPromptOverlay.style.display = 'none';
+      });
+
+      btnAll.addEventListener('click', () => {
+        if (pagesDataRef && pagesDataRef.length > 0) {
+          generateAllPagesPDF(pagesDataRef);
+        }
+        downloadPromptOverlay.style.display = 'none';
+      });
+    }
+
+    // ---------- PDF ----------
+
+    function generatePDF(pageStacks, index) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'pt', format: 'A4' });
+
+      doc.setFont('Courier');
+      const fontSize = 14;
+      doc.setFontSize(fontSize);
+      const lineHeight = fontSize * 1.5;
+      const charWidth = doc.getTextWidth('M');
+
+      let y = 40;
+      const marginLeft = 40;
+
+      for (let r = 0; r < TOTAL_ROWS; r++) {
+        let x = marginLeft;
+        for (let c = 0; c < COLS; c++) {
+          const stack = pageStacks[r][c];
+          stack.forEach(item => {
+            const grayVal = Math.round((1 - item.shade) * 255);
+            doc.setTextColor(grayVal, grayVal, grayVal);
+            const yShift = item.yOffset * 1;
+            doc.text(item.ch, x, y + yShift);
+          });
+          x += charWidth;
+        }
+        doc.setTextColor(0, 0, 0);
+        y += lineHeight;
+      }
+
+      doc.save('page_' + (index + 1) + '.pdf');
+    }
+
+    function generateAllPagesPDF(pagesDataRef) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'pt', format: 'A4' });
+
+      doc.setFont('Courier');
+      const fontSize = 14;
+      doc.setFontSize(fontSize);
+      const lineHeight = fontSize * 1.5;
+      const charWidth = doc.getTextWidth('M');
+
+      pagesDataRef.forEach((pageStacks, pageIndex) => {
+        if (pageIndex > 0) {
+          doc.addPage();
+        }
+        let y = 40;
+        const marginLeft = 40;
+
+        for (let r = 0; r < TOTAL_ROWS; r++) {
+          let x = marginLeft;
+          for (let c = 0; c < COLS; c++) {
+            const stack = pageStacks[r][c];
+            stack.forEach(item => {
+              const grayVal = Math.round((1 - item.shade) * 255);
+              doc.setTextColor(grayVal, grayVal, grayVal);
+              const yShift = item.yOffset * 1;
+              doc.text(item.ch, x, y + yShift);
+            });
+            x += charWidth;
+          }
+          doc.setTextColor(0, 0, 0);
+          y += lineHeight;
+        }
+      });
+
+      doc.save('typewriter_all_pages.pdf');
+    }
+
+    // ---------- HARD RESET ----------
+
+    function hardReset() {
+      if (!paperDiv || !viewportElem.contains(paperDiv)) {
+        pagesData = [];
+        rightFrame.querySelectorAll('.thumbnail-wrapper').forEach(el => el.remove());
+        createPaperArea();
+        return;
+      }
+
+      if (!paperDiv.classList.contains('paper-out')) {
+        const paperOut = document.getElementById('paper-out-sound');
+        let animDuration = 1; // fallback in seconds
+
+        if (paperOut) {
+          try {
+            if (!isNaN(paperOut.duration) && paperOut.duration > 0) {
+              animDuration = paperOut.duration;
+            }
+            paperOut.currentTime = 0;
+            paperOut.play();
+          } catch (e) {}
+        }
+
+        paperDiv.style.animationDuration = animDuration + 's';
+
+        viewportElem.style.overflow = 'visible';
+        paperDiv.classList.add('paper-out');
+
+        paperDiv.addEventListener('animationend', () => {
+          if (viewportElem.contains(paperDiv)) {
+            viewportElem.removeChild(paperDiv);
+          }
+          rightFrame.querySelectorAll('.thumbnail-wrapper').forEach(el => el.remove());
+          pagesData = [];
+          viewportElem.style.overflow = 'hidden';
+          createPaperArea();
+        }, { once: true });
+      }
+    }
+
+    // ---------- DOM READY ----------
+
+    document.addEventListener('DOMContentLoaded', () => {
+      pagesData = [];
+      createPaperArea();
+
+      const hardResetButton = document.getElementById('hardResetButton');
+      if (hardResetButton) {
+        hardResetButton.addEventListener('click', hardReset);
+      }
+
+      const toggleRightBtn = document.getElementById('toggle-right-btn');
+      if (toggleRightBtn) {
+        toggleRightBtn.addEventListener('click', () => {
+          document.body.classList.toggle('right-collapsed');
+          const collapsed = document.body.classList.contains('right-collapsed');
+          toggleRightBtn.textContent = collapsed ? 'Show' : 'Hide';
+          if (paperDiv) { measureRowPx(); renderPage(); positionViewport(); }
+        });
+      }
+
+      const modal = document.getElementById('infoModal');
+      const confirmBtn = document.getElementById('infoModalConfirm');
+      if (modal && confirmBtn) {
+        document.body.classList.add('modal-open');
+        confirmBtn.addEventListener('click', () => {
+          modal.classList.add('hidden');
+          document.body.classList.remove('modal-open');
+        });
+      }
+    });
+
+    // ---------- RESIZE ----------
+
+    window.addEventListener('resize', () => {
+      if (paperDiv) {
+        measureRowPx();
+        renderPage();
+        positionViewport();
+      }
+    });
+  </script>
+</body>
+</html>
