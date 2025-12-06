@@ -580,8 +580,34 @@
     let rowPx = 0;
     let isTyping = false;
 
+    const KEY_CLICK_POOL_SIZE = 6;
+
     let audioWarmed = false;
     let canPlayKeySound = true;
+    let nextKeyClickIndex = 0;
+
+    const keyClickPool = [];
+
+    let audioCtx = null;
+    let keyClickBuffer = null;
+
+    function initKeyClickPool() {
+      if (!keyClick) return;
+      keyClickPool.length = 0;
+      keyClickPool.push(keyClick);
+
+      const parent = keyClick.parentNode;
+      for (let i = 1; i < KEY_CLICK_POOL_SIZE; i++) {
+        try {
+          const clone = keyClick.cloneNode(true);
+          clone.id = `keypress-sound-${i}`;
+          if (parent) parent.appendChild(clone);
+          keyClickPool.push(clone);
+        } catch {}
+      }
+    }
+
+    initKeyClickPool();
 
     enterLong.addEventListener('ended', () => {
       document.body.classList.remove('hide-cursor');
