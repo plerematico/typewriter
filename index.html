@@ -580,8 +580,34 @@
     let rowPx = 0;
     let isTyping = false;
 
+    const KEY_CLICK_POOL_SIZE = 6;
+
     let audioWarmed = false;
     let canPlayKeySound = true;
+    let nextKeyClickIndex = 0;
+
+    const keyClickPool = [];
+
+    let audioCtx = null;
+    let keyClickBuffer = null;
+
+    function initKeyClickPool() {
+      if (!keyClick) return;
+      keyClickPool.length = 0;
+      keyClickPool.push(keyClick);
+
+      const parent = keyClick.parentNode;
+      for (let i = 1; i < KEY_CLICK_POOL_SIZE; i++) {
+        try {
+          const clone = keyClick.cloneNode(true);
+          clone.id = `keypress-sound-${i}`;
+          if (parent) parent.appendChild(clone);
+          keyClickPool.push(clone);
+        } catch {}
+      }
+    }
+
+    initKeyClickPool();
 
     enterLong.addEventListener('ended', () => {
       document.body.classList.remove('hide-cursor');
@@ -590,38 +616,99 @@
 
     // ---------- AUDIO HELPERS ----------
 
-    function warmUpAudio() {
-      if (audioWarmed) return;
-      audioWarmed = true;
+    let audioWarmPromise;
 
-      const sounds = [keyClick, enterLong, bell, nokeySound];
-      sounds.forEach(a => {
-        if (!a) return;
-        const oldVol = a.volume;
-        a.volume = 0;
+    async function ensureAudioContext() {
+      if (!audioCtx) {
         try {
-          a.currentTime = 0;
-          const p = a.play();
-          if (p && typeof p.catch === 'function') {
-            p.catch(() => {});
-          }
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         } catch {}
-        setTimeout(() => {
-          try {
-            a.pause();
-            a.currentTime = 0;
-          } catch {}
-          a.volume = oldVol;
-        }, 250);
-      });
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        try { await audioCtx.resume(); } catch {}
+      }
+      return audioCtx;
     }
 
-    function playKeyClick() {
-      if (!canPlayKeySound) return;
+    async function loadKeyBuffer() {
+      if (keyClickBuffer || !keyClick || !keyClick.src) return keyClickBuffer;
+
       try {
-        keyClick.pause();
-        keyClick.currentTime = 0;
-        keyClick.play();
+        const ctx = await ensureAudioContext();
+        if (!ctx) return null;
+
+        const response = await fetch(keyClick.src);
+        const arrayBuf = await response.arrayBuffer();
+        keyClickBuffer = await ctx.decodeAudioData(arrayBuf.slice(0));
+      } catch {}
+
+      return keyClickBuffer;
+    }
+    async function warmUpAudio() {
+      if (audioWarmed) return;
+      if (!audioWarmPromise) {
+        audioWarmPromise = (async () => {
+          await ensureAudioContext();
+          await loadKeyBuffer();
+
+          const sounds = [...keyClickPool, enterLong, bell, nokeySound].filter(a => a && a.src);
+
+          for (const a of sounds) {
+            const previousMuted  = a.muted;
+            const previousVolume = a.volume;
+
+            try {
+              a.muted = true;
+              a.volume = previousVolume || 1;
+              a.currentTime = 0;
+
+              const playPromise = a.play();
+              if (playPromise && typeof playPromise.catch === 'function') {
+                await playPromise.catch(() => {});
+              }
+            } catch {}
+
+            try {
+              a.pause();
+              a.currentTime = 0;
+            } catch {}
+
+            try {
+              a.muted  = previousMuted;
+              a.volume = previousVolume;
+            } catch {}
+          }
+
+          audioWarmed = true;
+        })();
+      }
+
+      return audioWarmPromise;
+    }
+
+    async function playKeyClick() {
+      if (!canPlayKeySound) return;
+
+      const ctx = await ensureAudioContext();
+      if (ctx && keyClickBuffer) {
+        try {
+          const source = ctx.createBufferSource();
+          source.buffer = keyClickBuffer;
+          source.connect(ctx.destination);
+          source.start();
+          return;
+        } catch {}
+      }
+
+      if (!keyClickPool.length) return;
+
+      const sound = keyClickPool[nextKeyClickIndex % keyClickPool.length];
+      nextKeyClickIndex = (nextKeyClickIndex + 1) % keyClickPool.length;
+
+      try {
+        sound.pause();
+        sound.currentTime = 0;
+        sound.play();
       } catch {}
     }
 
@@ -1374,6 +1461,15 @@
         confirmBtn.addEventListener('click', () => {
           modal.classList.add('hidden');
           document.body.classList.remove('modal-open');
+
+          // Warm audio immediately after the user's first interaction so the
+          // very first keystrokes aren't muted by the warmup routine.
+          warmUpAudio();
+
+          // Give focus to the paper instantly so typing can begin right away.
+          if (paperDiv) {
+            requestAnimationFrame(() => paperDiv.focus({ preventScroll: true }));
+          }
         });
       }
     });
