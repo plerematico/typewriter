@@ -596,23 +596,21 @@
 
       const sounds = [keyClick, enterLong, bell, nokeySound];
       sounds.forEach(a => {
-        if (!a) return;
-        const oldVol = a.volume;
-        a.volume = 0;
+        if (!a || !a.src) return;
         try {
-          a.currentTime = 0;
-          const p = a.play();
+          const clone = new Audio(a.src);
+          clone.muted = true;
+          const p = clone.play();
           if (p && typeof p.catch === 'function') {
             p.catch(() => {});
           }
+          setTimeout(() => {
+            try {
+              clone.pause();
+              clone.src = '';
+            } catch {}
+          }, 400);
         } catch {}
-        setTimeout(() => {
-          try {
-            a.pause();
-            a.currentTime = 0;
-          } catch {}
-          a.volume = oldVol;
-        }, 250);
       });
     }
 
@@ -1374,6 +1372,15 @@
         confirmBtn.addEventListener('click', () => {
           modal.classList.add('hidden');
           document.body.classList.remove('modal-open');
+
+          // Warm audio immediately after the user's first interaction so the
+          // very first keystrokes aren't muted by the warmup routine.
+          warmUpAudio();
+
+          // Give focus to the paper instantly so typing can begin right away.
+          if (paperDiv) {
+            requestAnimationFrame(() => paperDiv.focus({ preventScroll: true }));
+          }
         });
       }
     });
