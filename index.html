@@ -665,6 +665,38 @@
         sound.play();
       } catch {}
     }
+    function warmUpAudio() {
+      if (audioWarmed) return;
+      audioWarmed = true;
+
+      const sounds = [keyClick, enterLong, bell, nokeySound];
+      sounds.forEach(a => {
+        if (!a || !a.src) return;
+        try {
+          const clone = new Audio(a.src);
+          clone.muted = true;
+          const p = clone.play();
+          if (p && typeof p.catch === 'function') {
+            p.catch(() => {});
+          }
+          setTimeout(() => {
+            try {
+              clone.pause();
+              clone.src = '';
+            } catch {}
+          }, 400);
+        } catch {}
+      });
+    }
+
+    function playKeyClick() {
+      if (!canPlayKeySound) return;
+      try {
+        keyClick.pause();
+        keyClick.currentTime = 0;
+        keyClick.play();
+      } catch {}
+    }
 
     function playBell() {
       try {
