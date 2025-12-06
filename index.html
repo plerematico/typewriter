@@ -580,8 +580,31 @@
     let rowPx = 0;
     let isTyping = false;
 
+    const KEY_CLICK_POOL_SIZE = 6;
+
     let audioWarmed = false;
     let canPlayKeySound = true;
+    let nextKeyClickIndex = 0;
+
+    const keyClickPool = [];
+
+    function initKeyClickPool() {
+      if (!keyClick) return;
+      keyClickPool.length = 0;
+      keyClickPool.push(keyClick);
+
+      const parent = keyClick.parentNode;
+      for (let i = 1; i < KEY_CLICK_POOL_SIZE; i++) {
+        try {
+          const clone = keyClick.cloneNode(true);
+          clone.id = `keypress-sound-${i}`;
+          if (parent) parent.appendChild(clone);
+          keyClickPool.push(clone);
+        } catch {}
+      }
+    }
+
+    initKeyClickPool();
 
     enterLong.addEventListener('ended', () => {
       document.body.classList.remove('hide-cursor');
@@ -590,6 +613,58 @@
 
     // ---------- AUDIO HELPERS ----------
 
+    let audioWarmPromise;
+    async function warmUpAudio() {
+      if (audioWarmed) return;
+      if (!audioWarmPromise) {
+        audioWarmPromise = (async () => {
+          const sounds = [...keyClickPool, enterLong, bell, nokeySound].filter(a => a && a.src);
+
+          for (const a of sounds) {
+            const previousMuted  = a.muted;
+            const previousVolume = a.volume;
+
+            try {
+              a.muted = true;
+              a.volume = previousVolume || 1;
+              a.currentTime = 0;
+
+              const playPromise = a.play();
+              if (playPromise && typeof playPromise.catch === 'function') {
+                await playPromise.catch(() => {});
+              }
+            } catch {}
+
+            try {
+              a.pause();
+              a.currentTime = 0;
+            } catch {}
+
+            try {
+              a.muted  = previousMuted;
+              a.volume = previousVolume;
+            } catch {}
+          }
+
+          audioWarmed = true;
+        })();
+      }
+
+      return audioWarmPromise;
+    }
+
+    function playKeyClick() {
+      if (!canPlayKeySound || !keyClickPool.length) return;
+
+      const sound = keyClickPool[nextKeyClickIndex % keyClickPool.length];
+      nextKeyClickIndex = (nextKeyClickIndex + 1) % keyClickPool.length;
+
+      try {
+        sound.pause();
+        sound.currentTime = 0;
+        sound.play();
+      } catch {}
+    }
     function warmUpAudio() {
       if (audioWarmed) return;
       audioWarmed = true;
