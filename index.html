@@ -616,99 +616,36 @@
 
     // ---------- AUDIO HELPERS ----------
 
-    let audioWarmPromise;
-
-    async function ensureAudioContext() {
-      if (!audioCtx) {
-        try {
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        } catch {}
-      }
-      if (audioCtx && audioCtx.state === 'suspended') {
-        try { await audioCtx.resume(); } catch {}
-      }
-      return audioCtx;
-    }
-
-    async function loadKeyBuffer() {
-      if (keyClickBuffer || !keyClick || !keyClick.src) return keyClickBuffer;
-
-      try {
-        const ctx = await ensureAudioContext();
-        if (!ctx) return null;
-
-        const response = await fetch(keyClick.src);
-        const arrayBuf = await response.arrayBuffer();
-        keyClickBuffer = await ctx.decodeAudioData(arrayBuf.slice(0));
-      } catch {}
-
-      return keyClickBuffer;
-    }
-    async function warmUpAudio() {
+    function warmUpAudio() {
       if (audioWarmed) return;
-      if (!audioWarmPromise) {
-        audioWarmPromise = (async () => {
-          await ensureAudioContext();
-          await loadKeyBuffer();
+      audioWarmed = true;
 
-          const sounds = [...keyClickPool, enterLong, bell, nokeySound].filter(a => a && a.src);
-
-          for (const a of sounds) {
-            const previousMuted  = a.muted;
-            const previousVolume = a.volume;
-
-            try {
-              a.muted = true;
-              a.volume = previousVolume || 1;
-              a.currentTime = 0;
-
-              const playPromise = a.play();
-              if (playPromise && typeof playPromise.catch === 'function') {
-                await playPromise.catch(() => {});
-              }
-            } catch {}
-
-            try {
-              a.pause();
-              a.currentTime = 0;
-            } catch {}
-
-            try {
-              a.muted  = previousMuted;
-              a.volume = previousVolume;
-            } catch {}
+      const sounds = [keyClick, enterLong, bell, nokeySound];
+      sounds.forEach(a => {
+        if (!a || !a.src) return;
+        try {
+          const clone = new Audio(a.src);
+          clone.muted = true;
+          const p = clone.play();
+          if (p && typeof p.catch === 'function') {
+            p.catch(() => {});
           }
-
-          audioWarmed = true;
-        })();
-      }
-
-      return audioWarmPromise;
+          setTimeout(() => {
+            try {
+              clone.pause();
+              clone.src = '';
+            } catch {}
+          }, 400);
+        } catch {}
+      });
     }
 
-    async function playKeyClick() {
+    function playKeyClick() {
       if (!canPlayKeySound) return;
-
-      const ctx = await ensureAudioContext();
-      if (ctx && keyClickBuffer) {
-        try {
-          const source = ctx.createBufferSource();
-          source.buffer = keyClickBuffer;
-          source.connect(ctx.destination);
-          source.start();
-          return;
-        } catch {}
-      }
-
-      if (!keyClickPool.length) return;
-
-      const sound = keyClickPool[nextKeyClickIndex % keyClickPool.length];
-      nextKeyClickIndex = (nextKeyClickIndex + 1) % keyClickPool.length;
-
       try {
-        sound.pause();
-        sound.currentTime = 0;
-        sound.play();
+        keyClick.pause();
+        keyClick.currentTime = 0;
+        keyClick.play();
       } catch {}
     }
 
