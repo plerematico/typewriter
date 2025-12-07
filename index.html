@@ -25,7 +25,7 @@
       background: #222;
       width: 100vw;
       box-sizing: border-box;
-      font-family: 'Courier New', Courier, monospace;
+      font-family: 'Courier', monospace;
       overflow-x: hidden;
       overflow-y: hidden;
     }
@@ -117,7 +117,7 @@
       user-select: none;
       width: fit-content;
       transform-origin: top center;
-      font-family: 'Courier New', Courier, monospace;
+      font-family: 'Courier', monospace;
       z-index: 3;
     }
 
@@ -193,7 +193,7 @@
       position: relative;
       box-sizing: border-box;
       line-height: var(--row-height, 24px);
-      font-family: 'Courier New', Courier, monospace;
+      font-family: 'Courier', monospace;
       color: rgba(0,0,0,1);
     }
     .cell.margin { background: #fff; }
@@ -727,7 +727,7 @@
     function measureRowPx() {
       // Measure monospace character width
       const probe = document.createElement('span');
-      probe.style.fontFamily = "'Courier New', Courier, monospace";
+      probe.style.fontFamily = "'Courier', monospace";
       probe.style.fontSize   = "1.19em";
       probe.style.visibility = "hidden";
       probe.textContent      = "M";
