@@ -468,7 +468,7 @@
 
   <div id="infoModal" class="modal-overlay">
     <div class="modal-dialog">
-      <h2>Typewriter Challenge – Read before you start</h2>
+      <h2>1 Typewriter Challenge – Read before you start</h2>
       <div class="modal-body">
         <p>
           This tool behaves like a real typewriter. It does <strong>not</strong> autosave.
@@ -656,44 +656,44 @@
     }
 
     // ---------- LAYOUT ----------
-    function resetViewportAnimations() {
-      if (!viewportElem || typeof viewportElem.getAnimations !== 'function') return;
-      viewportElem.getAnimations().forEach(animation => {
-        try {
-          animation.cancel();
-        } catch {}
-      });
-    }
+   function resetViewportAnimations() {
+  if (!viewportElem) return;
 
-    function createPaperArea() {
-      initBlankPage();
-      resetViewportAnimations();
-      viewportElem.style.overflow = 'hidden';
+  if (typeof viewportElem.getAnimations === 'function') {
+    viewportElem.getAnimations().forEach(animation => {
+      try {
+        animation.cancel();
+      } catch {}
+    });
+  }
 
-      if (paperDiv && viewportElem.contains(paperDiv)) {
-        viewportElem.removeChild(paperDiv);
-      }
+  viewportElem.style.height = '';
+  viewportElem.style.bottom = '0';
+  viewportElem.style.left = '0';
+  viewportElem.style.right = '0';
+}
 
-      paperDiv = document.createElement('div');
-      paperDiv.className = 'paper-area';
-      paperDiv.id = 'paper-area';
-      paperDiv.setAttribute('tabindex', '0');
-      viewportElem.appendChild(paperDiv);
+  paperDiv = document.createElement('div');
+  paperDiv.className = 'paper-area';
+  paperDiv.id = 'paper-area';
+  paperDiv.setAttribute('tabindex', '0');
+  viewportElem.appendChild(paperDiv);
 
-      paperDiv.addEventListener('keydown', handleKey);
-      paperDiv.addEventListener('keyup', handleKeyUp);
-      paperDiv.addEventListener('mousedown', e => {
-        paperDiv.focus();
-        e.preventDefault();
-      });
+  paperDiv.addEventListener('keydown', handleKey);
+  paperDiv.addEventListener('keyup', handleKeyUp);
+  paperDiv.addEventListener('mousedown', e => {
+    paperDiv.focus();
+    e.preventDefault();
+  });
 
-      requestAnimationFrame(() => {
-        measureRowPx();
-        positionViewport();
-        renderPage();
-        paperDiv.focus();
-      });
-    }
+  measureRowPx();
+  positionViewport();
+  renderPage();
+
+  requestAnimationFrame(() => {
+    paperDiv.focus();
+  });
+}
 
     function measureRowPx() {
       const probe = document.createElement('span');
