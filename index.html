@@ -670,11 +670,35 @@
       viewportElem.style.height = '';
     }
 
-    function createPaperArea() {
-      initBlankPage();
+    function resetViewportForFreshPage() {
+      if (!viewportElem) return;
+
       resetViewportAnimations();
 
+      viewportElem.style.overflow = 'hidden';
+      viewportElem.style.transform = '';
+      viewportElem.style.animation = '';
+      viewportElem.style.transition = '';
+      viewportElem.style.bottom = '0';
+      viewportElem.style.left = '0';
+      viewportElem.style.right = '0';
+
+      const baselineRowPx = rowPx > 0 ? rowPx : 24;
+      viewportElem.style.height = `${baselineRowPx * VISIBLE_INITIAL}px`;
+    }
+
+    function createPaperArea() {
+      initBlankPage();
+      resetViewportForFreshPage();
+
       if (paperDiv && viewportElem.contains(paperDiv)) {
+        if (typeof paperDiv.getAnimations === 'function') {
+          paperDiv.getAnimations().forEach(animation => {
+            try {
+              animation.cancel();
+            } catch {}
+          });
+        }
         viewportElem.removeChild(paperDiv);
       }
 
@@ -682,7 +706,15 @@
       paperDiv.className = 'paper-area';
       paperDiv.id = 'paper-area';
       paperDiv.setAttribute('tabindex', '0');
+      paperDiv.classList.remove('paper-out');
+      paperDiv.style.animation = 'none';
+      paperDiv.style.transform = 'none';
+      paperDiv.style.transition = 'none';
       viewportElem.appendChild(paperDiv);
+      void paperDiv.offsetHeight;
+      paperDiv.style.animation = '';
+      paperDiv.style.transform = '';
+      paperDiv.style.transition = '';
 
       paperDiv.addEventListener('keydown', handleKey);
       paperDiv.addEventListener('keyup', handleKeyUp);
@@ -896,8 +928,7 @@
         if (viewportElem.contains(paperDiv)) {
           viewportElem.removeChild(paperDiv);
         }
-        viewportElem.style.overflow = 'hidden';
-        viewportElem.style.height = '';
+        resetViewportForFreshPage();
         isTyping = false;
         createPaperArea();
       }, { once: true });
