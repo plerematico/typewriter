@@ -232,9 +232,16 @@
       animation: blinkBox 1.2s steps(1) infinite;
     }
 
-    /* Hide cursor while long Enter sound is playing */
-    .hide-cursor .cell.cursor::before {
-      display: none;
+    .enter-travel-cursor {
+      position: absolute;
+      width: calc(var(--cell-size, 24px) - 4px);
+      height: calc(var(--row-height, 24px) * 0.8);
+      border-radius: 2px;
+      border: 1px solid rgba(0,0,0,0.6);
+      background: rgba(200,200,200,0.45);
+      box-sizing: border-box;
+      pointer-events: none;
+      z-index: 999;
     }
 
     .cell, .cell * { user-select: none; }
@@ -372,52 +379,6 @@
     .preview-paper.slide-in-right  { animation: slideInRight 0.22s ease-out forwards; }
     .preview-paper.slide-out-right { animation: slideOutRight 0.22s ease-out forwards; }
     .preview-paper.slide-in-left   { animation: slideInLeft 0.22s ease-out forwards; }
-
-    /* Small popup inside preview dialog for download choices */
-    .download-prompt-overlay {
-      position: absolute;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.35);
-      display: none;          /* hidden by default */
-      align-items: center;
-      justify-content: center;
-      z-index: 10;            /* sits above the preview paper */
-    }
-
-    .download-prompt-box {
-      background: #fdfaf3;
-      border: 1px solid var(--preview-border);
-      border-radius: 6px;
-      padding: 12px 16px;
-      min-width: 220px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-      font-size: 0.9rem;
-    }
-
-    .download-prompt-box p {
-      margin: 0 0 10px 0;
-    }
-
-    .download-prompt-buttons {
-      display: flex;
-      justify-content: flex-end;
-      gap: 6px;
-      margin-top: 6px;
-    }
-
-    .download-prompt-buttons button {
-      font-size: 0.85rem;
-      padding: 3px 8px;
-      cursor: pointer;
-      border-radius: 3px;
-      border: 1px solid var(--preview-border);
-      background: var(--preview-button-bg);
-      color: var(--preview-text);
-    }
-
-    .download-prompt-buttons button:hover {
-      background: var(--preview-button-bg-hover);
-    }
 
     /* PAGE-LOAD INFO MODAL */
     .modal-overlay {
@@ -559,6 +520,7 @@
     const TEXT_COLS          = 55;
     const FIRST_TEXT_COL     = LEFT_MARGIN;
     const LAST_TEXT_COL      = FIRST_TEXT_COL + TEXT_COLS - 1;
+    const WORD_COUNT_ROW     = TOP_MARGIN_ROWS + TEXT_LINES;
     const BELL_COL           = FIRST_TEXT_COL + TEXT_COLS - 5;
 
     const VISIBLE_INITIAL    = 3;
@@ -608,11 +570,6 @@
     }
 
     initKeyClickPool();
-
-    enterLong.addEventListener('ended', () => {
-      document.body.classList.remove('hide-cursor');
-      isTyping = false;
-    });
 
     // ---------- AUDIO HELPERS ----------
 
@@ -820,12 +777,75 @@
       }
     }
 
+    function getCellWidthPx() {
+      const firstCell = paperDiv ? paperDiv.querySelector('.paper-row .cell') : null;
+      if (firstCell) return firstCell.getBoundingClientRect().width;
+      const cssValue = getComputedStyle(document.documentElement).getPropertyValue('--cell-size');
+      const parsed = parseFloat(cssValue);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : 24;
+    }
+
+    function getEnterAnimationDurationMs() {
+      const durationSeconds = enterLong && Number.isFinite(enterLong.duration) ? enterLong.duration : 0;
+      const playbackRate = enterLong && Number.isFinite(enterLong.playbackRate) && enterLong.playbackRate > 0
+        ? enterLong.playbackRate
+        : 1;
+      return durationSeconds > 0 ? (durationSeconds * 1000) / playbackRate : 700;
+    }
+
+    function animateEnterTravel(startRow, startCol, endRow, endCol, durationMs, onDone) {
+      const cellWidth = getCellWidthPx();
+      const startX = startCol * cellWidth + (cellWidth / 2);
+      const startY = startRow * rowPx + (rowPx / 2);
+      const endX = endCol * cellWidth + (cellWidth / 2);
+      const endY = endRow * rowPx + (rowPx / 2);
+
+      const travelCursor = document.createElement('div');
+      travelCursor.className = 'enter-travel-cursor';
+      travelCursor.style.left = `${startX}px`;
+      travelCursor.style.top = `${startY}px`;
+      paperDiv.appendChild(travelCursor);
+
+      const horizontalDistance = Math.abs(endX - startX);
+      const verticalDistance = Math.abs(endY - startY);
+      const totalDistance = horizontalDistance + verticalDistance;
+      const horizontalShare = totalDistance > 0 ? (horizontalDistance / totalDistance) : 1;
+
+      const keyframes = endRow !== startRow
+        ? [
+            { left: `${startX}px`, top: `${startY}px`, offset: 0 },
+            { left: `${endX}px`, top: `${startY}px`, offset: horizontalShare },
+            { left: `${endX}px`, top: `${endY}px`, offset: 1 }
+          ]
+        : [
+            { left: `${startX}px`, top: `${startY}px`, offset: 0 },
+            { left: `${endX}px`, top: `${endY}px`, offset: 1 }
+          ];
+
+      const animation = travelCursor.animate(keyframes, {
+        duration: durationMs,
+        easing: 'linear',
+        fill: 'forwards'
+      });
+
+      const finalize = () => {
+        travelCursor.remove();
+        onDone();
+      };
+      animation.onfinish = finalize;
+      animation.oncancel = finalize;
+    }
+
     // ---------- PAGE FINISH HELPERS ----------
 
     function finishPageWithLongLock() {
       const pageStacks = JSON.parse(JSON.stringify(currentData));
-      pagesData.push(pageStacks);
-      createThumbnail(pageStacks, pagesData.length - 1);
+      const pageRecord = {
+        stacks: pageStacks,
+        wordCount: countWordsInPage(pageStacks)
+      };
+      pagesData.push(pageRecord);
+      createThumbnail(pageRecord, pagesData.length - 1);
 
       viewportElem.style.overflow = 'visible';
       paperDiv.classList.add('paper-out');
@@ -836,7 +856,6 @@
         viewportElem.style.overflow = 'hidden';
 
         // ensure we never stay "locked" after page change
-        document.body.classList.remove('hide-cursor');
         isTyping = false;
 
         createPaperArea();
@@ -866,7 +885,6 @@
         if (isTyping) { e.preventDefault(); return; }
 
         isTyping = true;
-        document.body.classList.add('hide-cursor');
 
         const paperOut = document.getElementById('paper-out-sound');
         if (paperOut) {
@@ -884,32 +902,71 @@
         return;
       }
 
-      // Enter: single behavior (carriage return)
+      // Enter: animated carriage return
       if (e.key === 'Enter') {
         if (isTyping) { e.preventDefault(); return; }
         if (e.repeat) { e.preventDefault(); return; }
 
         isTyping = true;
-        document.body.classList.add('hide-cursor');
+
+        const startRow = cursorRow;
+        const startCol = cursorCol;
+        const lastTextRow = TOP_MARGIN_ROWS + TEXT_LINES - 1;
+        const isLastTextRow = startRow >= lastTextRow;
+        const endRow = isLastTextRow ? startRow : startRow + 1;
+        const endCol = FIRST_TEXT_COL;
+
+        renderPage();
+        const finishEnterAction = () => {
+          if (isLastTextRow) {
+            finishPageWithLongLock();
+            return;
+          }
+
+          cursorRow = endRow;
+          cursorCol = endCol;
+          renderPage();
+          positionViewport();
+          isTyping = false;
+        };
+
+        const startTravelAnimation = () => {
+          const durationMs = getEnterAnimationDurationMs();
+          animateEnterTravel(startRow, startCol, endRow, endCol, durationMs, finishEnterAction);
+        };
+
+        let animationStarted = false;
+        const beginOnce = () => {
+          if (animationStarted) return;
+          animationStarted = true;
+          startTravelAnimation();
+        };
+
+        const handlePlaying = () => {
+          enterLong.removeEventListener('playing', handlePlaying);
+          beginOnce();
+        };
+
+        enterLong.addEventListener('playing', handlePlaying);
+
         try {
           enterLong.currentTime = 0;
-          enterLong.play();
-        } catch {}
-
-        const lastTextRow = TOP_MARGIN_ROWS + TEXT_LINES - 1;
-
-        if (cursorRow < lastTextRow) {
-          setTimeout(() => {
-            cursorRow++;
-            cursorCol = FIRST_TEXT_COL;
-            renderPage();
-            positionViewport();
-          }, ENTER_ACTION_DELAY);
-        } else {
-          setTimeout(() => {
-            finishPageWithLongLock();
-          }, ENTER_ACTION_DELAY);
+          const playPromise = enterLong.play();
+          if (playPromise && typeof playPromise.catch === 'function') {
+            playPromise.catch(() => {
+              enterLong.removeEventListener('playing', handlePlaying);
+              beginOnce();
+            });
+          }
+        } catch {
+          enterLong.removeEventListener('playing', handlePlaying);
+          beginOnce();
         }
+
+        setTimeout(() => {
+          enterLong.removeEventListener('playing', handlePlaying);
+          beginOnce();
+        }, 50);
 
         e.preventDefault();
         return;
@@ -1007,7 +1064,30 @@
 
     // ---------- BUILD PAGE DOM (base, no preview-specific classes) ----------
 
-    function buildPageDOM(pageStacks) {
+    function normalizePageRecord(pageData) {
+      if (pageData && Array.isArray(pageData.stacks)) return pageData;
+      return {
+        stacks: pageData,
+        wordCount: countWordsInPage(pageData)
+      };
+    }
+
+    function getDisplayStack(pageStacks, wordCount, r, c) {
+      const stack = (pageStacks && pageStacks[r] && pageStacks[r][c]) ? pageStacks[r][c] : [];
+      const label = `(words=${wordCount})`;
+      const labelIndex = c - FIRST_TEXT_COL;
+
+      if (r !== WORD_COUNT_ROW || labelIndex < 0 || labelIndex >= label.length) {
+        return stack;
+      }
+
+      return [...stack, { ch: label[labelIndex], shade: 1, yOffset: 0 }];
+    }
+
+    function buildPageDOM(pageData) {
+      const pageRecord = normalizePageRecord(pageData);
+      const pageStacks = pageRecord.stacks;
+      const wordCount = pageRecord.wordCount;
       const paper = document.createElement('div');
       paper.className = 'paper-area';  // base; preview/thumbnail styles added later
 
@@ -1027,21 +1107,19 @@
             cell.classList.add('textarea');
           }
 
-          if (r >= TOP_MARGIN_ROWS && r < TOP_MARGIN_ROWS + TEXT_LINES) {
-            const stack = pageStacks[r][c];
-            if (stack.length) {
-              const stackDiv = document.createElement('span');
-              stackDiv.className = 'overstrike-stack';
-              stack.forEach((item, k) => {
-                const overSpan = document.createElement('span');
-                overSpan.textContent = item.ch;
-                overSpan.style.zIndex = 10 + k;
-                overSpan.style.color = `rgba(0,0,0,${item.shade})`;
-                overSpan.style.top = `calc(50% + ${item.yOffset}px)`;
-                stackDiv.appendChild(overSpan);
-              });
-              cell.appendChild(stackDiv);
-            }
+          const displayStack = getDisplayStack(pageStacks, wordCount, r, c);
+          if (displayStack.length) {
+            const stackDiv = document.createElement('span');
+            stackDiv.className = 'overstrike-stack';
+            displayStack.forEach((item, k) => {
+              const overSpan = document.createElement('span');
+              overSpan.textContent = item.ch;
+              overSpan.style.zIndex = 10 + k;
+              overSpan.style.color = `rgba(0,0,0,${item.shade})`;
+              overSpan.style.top = `calc(50% + ${item.yOffset}px)`;
+              stackDiv.appendChild(overSpan);
+            });
+            cell.appendChild(stackDiv);
           }
 
           rowDiv.appendChild(cell);
@@ -1055,7 +1133,7 @@
 
     // ---------- THUMBNAILS & PREVIEW ----------
 
-    function createThumbnail(pageStacks, index) {
+    function createThumbnail(pageData, index) {
       const wrapper = document.createElement('div');
       wrapper.className = 'thumbnail-wrapper';
 
@@ -1063,7 +1141,7 @@
       thumb.className = 'thumbnail';
 
       // Build base page DOM for the thumbnail
-      const miniPaper = buildPageDOM(pageStacks);
+      const miniPaper = buildPageDOM(pageData);
       miniPaper.classList.add('thumbnail-paper');
       thumb.appendChild(miniPaper);
 
@@ -1092,11 +1170,12 @@
 
       // Clicking the thumbnail opens the full preview
       wrapper.addEventListener('click', () => {
-        openPreview(pageStacks, index, pagesData);
+        openPreview(index, pagesData);
       });
     }
 
-    function openPreview(pageStacks, index, pagesDataRef) {
+    function openPreview(index, pagesDataRef) {
+      const initialPage = pagesDataRef[index];
       const overlay = document.createElement('div');
       overlay.className = 'preview-overlay';
 
@@ -1142,43 +1221,12 @@
       content.className = 'preview-content';
 
       // Build preview paper (layout-scaled via CSS .preview-paper)
-      let previewPaper = buildPageDOM(pageStacks);
+      let previewPaper = buildPageDOM(initialPage);
       previewPaper.classList.add('preview-paper');
       content.appendChild(previewPaper);
 
-      // Download mode popup overlay (inside dialog)
-      const downloadPromptOverlay = document.createElement('div');
-      downloadPromptOverlay.className = 'download-prompt-overlay';
-
-      const downloadBox = document.createElement('div');
-      downloadBox.className = 'download-prompt-box';
-
-      const downloadText = document.createElement('p');
-      downloadText.textContent = 'Download:';
-
-      const btnRow = document.createElement('div');
-      btnRow.className = 'download-prompt-buttons';
-
-      const btnCurrent = document.createElement('button');
-      btnCurrent.textContent = 'Current page';
-
-      const btnAll = document.createElement('button');
-      btnAll.textContent = 'All pages';
-
-      const btnCancel = document.createElement('button');
-      btnCancel.textContent = 'Cancel';
-
-      btnRow.appendChild(btnCurrent);
-      btnRow.appendChild(btnAll);
-      btnRow.appendChild(btnCancel);
-
-      downloadBox.appendChild(downloadText);
-      downloadBox.appendChild(btnRow);
-      downloadPromptOverlay.appendChild(downloadBox);
-
       dialog.appendChild(header);
       dialog.appendChild(content);
-      dialog.appendChild(downloadPromptOverlay);
       overlay.appendChild(dialog);
       document.body.appendChild(overlay);
 
@@ -1232,29 +1280,17 @@
         if (e.target === overlay) closeOverlay();
       });
 
-      // Download button opens the small popup
       downloadBtn.addEventListener('click', () => {
-        downloadPromptOverlay.style.display = 'flex';
-      });
-
-      btnCancel.addEventListener('click', () => {
-        downloadPromptOverlay.style.display = 'none';
-      });
-
-      btnCurrent.addEventListener('click', () => {
-        if (pagesDataRef && pagesDataRef[index]) {
-          generatePDF(pagesDataRef[index], index);
-        } else {
-          generatePDF(pageStacks, index);
+        if (!pagesDataRef || pagesDataRef.length === 0) return;
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+          alert('PDF export is unavailable because the jsPDF library did not load.');
+          return;
         }
-        downloadPromptOverlay.style.display = 'none';
-      });
-
-      btnAll.addEventListener('click', () => {
-        if (pagesDataRef && pagesDataRef.length > 0) {
-          generateAllPagesPDF(pagesDataRef);
+        if (pagesDataRef.length === 1) {
+          generatePDF(pagesDataRef[0], 0);
+          return;
         }
-        downloadPromptOverlay.style.display = 'none';
+        generateAllPagesPDF(pagesDataRef);
       });
     }
 
@@ -1283,7 +1319,10 @@ function countWordsInPage(pageStacks) {
   return text.split(/\s+/).filter(Boolean).length;
 }
 
-function generatePDF(pageStacks, index) {
+function generatePDF(pageData, index) {
+  const pageRecord = normalizePageRecord(pageData);
+  const pageStacks = pageRecord.stacks;
+  const wordCount = pageRecord.wordCount;
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'pt', format: 'A4' });
 
@@ -1299,8 +1338,8 @@ function generatePDF(pageStacks, index) {
   for (let r = 0; r < TOTAL_ROWS; r++) {
     let x = marginLeft;
     for (let c = 0; c < COLS; c++) {
-      const stack = pageStacks[r][c];
-      stack.forEach(item => {
+      const displayStack = getDisplayStack(pageStacks, wordCount, r, c);
+      displayStack.forEach(item => {
         const grayVal = Math.round((1 - item.shade) * 255);
         doc.setTextColor(grayVal, grayVal, grayVal);
         const yShift = item.yOffset * 1;
@@ -1311,9 +1350,6 @@ function generatePDF(pageStacks, index) {
     doc.setTextColor(0, 0, 0);
     y += lineHeight;
   }
-
-  const wordCount = countWordsInPage(pageStacks);
-  doc.text(`(words=${wordCount})`, marginLeft, y);
 
   doc.save('page_' + (index + 1) + '.pdf');
 }
@@ -1328,7 +1364,10 @@ function generatePDF(pageStacks, index) {
       const lineHeight = fontSize * 1.5;
       const charWidth = doc.getTextWidth('M');
 
-      pagesDataRef.forEach((pageStacks, pageIndex) => {
+      pagesDataRef.forEach((pageData, pageIndex) => {
+        const pageRecord = normalizePageRecord(pageData);
+        const pageStacks = pageRecord.stacks;
+        const wordCount = pageRecord.wordCount;
         if (pageIndex > 0) {
           doc.addPage();
         }
@@ -1338,8 +1377,8 @@ function generatePDF(pageStacks, index) {
         for (let r = 0; r < TOTAL_ROWS; r++) {
           let x = marginLeft;
           for (let c = 0; c < COLS; c++) {
-            const stack = pageStacks[r][c];
-            stack.forEach(item => {
+            const displayStack = getDisplayStack(pageStacks, wordCount, r, c);
+            displayStack.forEach(item => {
               const grayVal = Math.round((1 - item.shade) * 255);
               doc.setTextColor(grayVal, grayVal, grayVal);
               const yShift = item.yOffset * 1;
