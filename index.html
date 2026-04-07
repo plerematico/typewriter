@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Typewriter Challenge</title>
+  <title>Typewriter Tool</title>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
@@ -37,7 +37,6 @@
     .panel-toggle {
       position: absolute;
       top: 6px;
-      right: 6px;
       z-index: 1000;
       padding: 2px 6px;
       font-size: 0.7em;
@@ -49,6 +48,7 @@
       transition: opacity 0.2s;
     }
     .panel-toggle:hover { opacity: 1; }
+    .panel-toggle-right { right: 6px; }
 
     .hard-reset-button {
       position: fixed;
@@ -230,6 +230,10 @@
       animation: blinkBox 1.2s steps(1) infinite;
     }
 
+    .hide-cursor .cell.cursor::before {
+      display: none;
+    }
+
     .enter-travel-cursor {
       position: absolute;
       width: calc(var(--cell-size, 24px) - 4px);
@@ -252,7 +256,6 @@
       overflow: hidden;
       box-shadow: -4px 0 10px rgba(0,0,0,0.8);
     }
-
     body.right-collapsed .right-frame > * {
       opacity: 0;
       pointer-events: none;
@@ -382,6 +385,8 @@
     .preview-paper.slide-out-right { animation: slideOutRight 0.22s ease-out forwards; }
     .preview-paper.slide-in-left   { animation: slideInLeft 0.22s ease-out forwards; }
 
+  
+
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -468,7 +473,7 @@
 
   <div id="infoModal" class="modal-overlay">
     <div class="modal-dialog">
-      <h2>1 Typewriter Challenge – Read before you start</h2>
+      <h2>Typewriter Tool – Read before you start V0.7</h2>
       <div class="modal-body">
         <p>
           This tool behaves like a real typewriter. It does <strong>not</strong> autosave.
@@ -476,8 +481,8 @@
         </p>
         <p><strong>Basic rules</strong></p>
         <ul>
-          <li>You cannot delete, the Backspace key only moves the cursor.</li>
-          <li>A bell dings near the end of each line.</li>
+          <li>You cannot delet, the Backspace key only moves the cursor.</li>
+          <li>The bell dings near the end of each line.</li>
           <li>If you keep typing without a new line, characters overstrike.</li>
           <li>Don’t type too fast or the mechanism may “miss” some keys.</li>
         </ul>
@@ -495,7 +500,7 @@
     </div>
   </div>
 
-  <button id="toggle-right-btn" class="panel-toggle">Hide</button>
+  <button id="toggle-right-btn" class="panel-toggle panel-toggle-right">Hide</button>
 
   <div class="main-layout">
     <div class="center-frame" id="center-frame">
@@ -514,7 +519,6 @@
   <audio id="paper-out-sound" src="paper out.wav" preload="auto"></audio>
 
   <script>
-    // ---------- SETTINGS ----------
     const TOP_MARGIN_ROWS    = 2;
     const TEXT_LINES         = 35;
     const BOTTOM_MARGIN_ROWS = 2;
@@ -531,10 +535,8 @@
     const VISIBLE_INITIAL    = 3;
     const SHORT_DELAY        = 50;
     const SHIFT_PROB         = 0.1;
-    const ENTER_ACTION_DELAY = 60;
-    const ENTER_ANIMATION_DURATION_MS = 1302;
+    const ENTER_ACTION_DELAY = 650;
 
-    // ---------- DOM ----------
     const viewportElem = document.getElementById('viewport');
     const rightFrame   = document.getElementById('right-frame');
     const bell         = document.getElementById('bell');
@@ -542,34 +544,58 @@
     const enterLong    = document.getElementById('enter-long-sound');
     const nokeySound   = document.getElementById('nokey-sound');
 
-    // ---------- STATE ----------
     let pagesData = [];
     let currentData;
     let cursorRow, cursorCol;
     let paperDiv;
     let rowPx = 0;
     let isTyping = false;
+
+    const KEY_CLICK_POOL_SIZE = 6;
     let audioWarmed = false;
     let canPlayKeySound = true;
 
-    // ---------- AUDIO ----------
+    const keyClickPool = [];
+
+    function initKeyClickPool() {
+      if (!keyClick) return;
+      keyClickPool.length = 0;
+      keyClickPool.push(keyClick);
+
+      const parent = keyClick.parentNode;
+      for (let i = 1; i < KEY_CLICK_POOL_SIZE; i++) {
+        try {
+          const clone = keyClick.cloneNode(true);
+          clone.id = `keypress-sound-${i}`;
+          if (parent) parent.appendChild(clone);
+          keyClickPool.push(clone);
+        } catch {}
+      }
+    }
+
+    initKeyClickPool();
+
     function warmUpAudio() {
       if (audioWarmed) return;
       audioWarmed = true;
 
-      [keyClick, enterLong, bell, nokeySound].forEach(a => {
-        if (!a || !a.src) return;
+      const paperOut = document.getElementById('paper-out-sound');
+      const sounds = [keyClick, enterLong, bell, nokeySound, paperOut];
+
+      sounds.forEach(a => {
+        if (!a) return;
         try {
-          const clone = new Audio(a.src);
-          clone.muted = true;
-          const p = clone.play();
+          a.muted = true;
+          a.currentTime = 0;
+          const p = a.play();
           if (p && typeof p.catch === 'function') p.catch(() => {});
           setTimeout(() => {
             try {
-              clone.pause();
-              clone.src = '';
+              a.pause();
+              a.muted = false;
+              a.currentTime = 0;
             } catch {}
-          }, 400);
+          }, 200);
         } catch {}
       });
     }
@@ -594,11 +620,14 @@
         if (p && typeof p.catch === 'function') {
           p.catch(() => { canPlayKeySound = true; });
         }
-        bell.onended = () => { canPlayKeySound = true; };
-      } catch {}
+        bell.onended = () => {
+          canPlayKeySound = true;
+        };
+      } catch {
+        canPlayKeySound = true;
+      }
     }
 
-    // ---------- PAGE DATA ----------
     function initBlankPage() {
       currentData = [];
       for (let r = 0; r < TOTAL_ROWS; r++) {
@@ -612,7 +641,6 @@
 
     function getFinalTextFromPage(pageStacks) {
       const lines = [];
-
       for (let r = TOP_MARGIN_ROWS; r < TOP_MARGIN_ROWS + TEXT_LINES; r++) {
         let line = '';
         for (let c = FIRST_TEXT_COL; c <= LAST_TEXT_COL; c++) {
@@ -621,7 +649,6 @@
         }
         lines.push(line.replace(/\s+$/g, ''));
       }
-
       return lines.join('\n').trim();
     }
 
@@ -655,65 +682,16 @@
       return [...stack, { ch: label[labelIndex], shade: 1, yOffset: 0 }];
     }
 
-    // ---------- LAYOUT ----------
-    function resetViewportAnimations() {
-      if (!viewportElem) return;
-
-      if (typeof viewportElem.getAnimations === 'function') {
-        viewportElem.getAnimations().forEach(animation => {
-          try {
-            animation.cancel();
-          } catch {}
-        });
-      }
-
-      viewportElem.style.height = '';
-    }
-
-    function resetViewportForFreshPage() {
-      if (!viewportElem) return;
-
-      resetViewportAnimations();
-
-      viewportElem.style.overflow = 'hidden';
-      viewportElem.style.transform = '';
-      viewportElem.style.animation = '';
-      viewportElem.style.transition = '';
-      viewportElem.style.bottom = '0';
-      viewportElem.style.left = '0';
-      viewportElem.style.right = '0';
-
-      const baselineRowPx = rowPx > 0 ? rowPx : 24;
-      viewportElem.style.height = `${baselineRowPx * VISIBLE_INITIAL}px`;
-    }
-
     function createPaperArea() {
       initBlankPage();
-
       if (paperDiv && viewportElem.contains(paperDiv)) {
-        if (typeof paperDiv.getAnimations === 'function') {
-          paperDiv.getAnimations().forEach(animation => {
-            try {
-              animation.cancel();
-            } catch {}
-          });
-        }
         viewportElem.removeChild(paperDiv);
       }
-
-      measureRowPx();
-      resetViewportForFreshPage();
-
       paperDiv = document.createElement('div');
       paperDiv.className = 'paper-area';
       paperDiv.id = 'paper-area';
       paperDiv.setAttribute('tabindex', '0');
-      paperDiv.classList.remove('paper-out');
-      paperDiv.style.height = (rowPx * TOTAL_ROWS) + 'px';
-      paperDiv.style.visibility = 'hidden';
-      paperDiv.style.animation = 'none';
-      paperDiv.style.transform = 'none';
-      paperDiv.style.transition = 'none';
+      viewportElem.appendChild(paperDiv);
 
       paperDiv.addEventListener('keydown', handleKey);
       paperDiv.addEventListener('keyup', handleKeyUp);
@@ -722,24 +700,20 @@
         e.preventDefault();
       });
 
-      viewportElem.appendChild(paperDiv);
-      renderPage();
-      positionViewport();
-      void paperDiv.offsetHeight;
-
-      paperDiv.style.visibility = '';
-      paperDiv.style.animation = '';
-      paperDiv.style.transform = '';
-      paperDiv.style.transition = '';
-      paperDiv.focus();
+      requestAnimationFrame(() => {
+        measureRowPx();
+        renderPage();
+        positionViewport();
+        paperDiv.focus();
+      });
     }
 
     function measureRowPx() {
       const probe = document.createElement('span');
       probe.style.fontFamily = "'Courier', monospace";
-      probe.style.fontSize = "1.19em";
+      probe.style.fontSize   = "1.19em";
       probe.style.visibility = "hidden";
-      probe.textContent = "M";
+      probe.textContent      = "M";
       document.body.appendChild(probe);
       const w = Math.ceil(probe.getBoundingClientRect().width) + 2;
       document.body.removeChild(probe);
@@ -752,6 +726,7 @@
       const h = w / targetWH;
 
       document.documentElement.style.setProperty('--row-height', h + 'px');
+
       rowPx = h;
 
       if (paperDiv) {
@@ -830,7 +805,6 @@
       return Number.isFinite(parsed) && parsed > 0 ? parsed : 24;
     }
 
-    // ---------- ENTER ANIMATION ----------
     function animateEnterTravel(startRow, startCol, endRow, endCol, durationMs, onDone) {
       const cellWidth = getCellWidthPx();
       const startX = startCol * cellWidth + (cellWidth / 2);
@@ -844,15 +818,15 @@
       travelCursor.style.top = `${startY}px`;
       paperDiv.appendChild(travelCursor);
 
-      const horizontalDistance = Math.abs(endX - startX);
       const verticalDistance = Math.abs(endY - startY);
-      const totalDistance = horizontalDistance + verticalDistance;
-      const horizontalShare = totalDistance > 0 ? (horizontalDistance / totalDistance) : 1;
+      const horizontalDistance = Math.abs(endX - startX);
+      const totalDistance = verticalDistance + horizontalDistance;
+      const verticalShare = totalDistance > 0 ? (verticalDistance / totalDistance) : 1;
 
       const keyframes = endRow !== startRow
         ? [
             { left: `${startX}px`, top: `${startY}px`, offset: 0 },
-            { left: `${endX}px`, top: `${startY}px`, offset: horizontalShare },
+            { left: `${startX}px`, top: `${endY}px`, offset: verticalShare },
             { left: `${endX}px`, top: `${endY}px`, offset: 1 }
           ]
         : [
@@ -875,54 +849,11 @@
       animation.oncancel = finalize;
     }
 
-    function animateViewportForEnter(startRow, endRow, durationMs, onDone) {
-      const startVisibleRows = Math.max(VISIBLE_INITIAL, startRow + 2);
-      const endVisibleRows = Math.max(VISIBLE_INITIAL, endRow + 2);
-      const startHeight = rowPx * startVisibleRows;
-      const endHeight = rowPx * endVisibleRows;
-
-      viewportElem.style.bottom = '0';
-      viewportElem.style.left = '0';
-      viewportElem.style.right = '0';
-
-      if (Math.abs(endHeight - startHeight) < 0.5) {
-        viewportElem.style.height = `${endHeight}px`;
-        onDone();
-        return;
-      }
-
-      const animation = viewportElem.animate(
-        [
-          { height: `${startHeight}px` },
-          { height: `${endHeight}px` }
-        ],
-        {
-          duration: durationMs,
-          easing: 'linear',
-          fill: 'forwards'
-        }
-      );
-
-      const finalize = () => {
-        viewportElem.style.height = `${endHeight}px`;
-        onDone();
-      };
-
-      animation.onfinish = finalize;
-      animation.oncancel = finalize;
-    }
-
-    // ---------- PAGE COMPLETION ----------
-    function finalizeCurrentPage() {
+    function finishPageWithLongLock() {
       const pageStacks = JSON.parse(JSON.stringify(currentData));
       const pageRecord = makePageRecord(pageStacks);
       pagesData.push(pageRecord);
       createThumbnail(pageRecord, pagesData.length - 1);
-      return pageRecord;
-    }
-
-    function finishPageWithLongLock() {
-      finalizeCurrentPage();
 
       viewportElem.style.overflow = 'visible';
       paperDiv.classList.add('paper-out');
@@ -931,13 +862,15 @@
         if (viewportElem.contains(paperDiv)) {
           viewportElem.removeChild(paperDiv);
         }
-        resetViewportForFreshPage();
+        viewportElem.style.overflow = 'hidden';
+
+        document.body.classList.remove('hide-cursor');
         isTyping = false;
+
         createPaperArea();
       }, { once: true });
     }
 
-    // ---------- KEY HANDLERS ----------
     function handleKey(e) {
       if (document.activeElement !== paperDiv) paperDiv.focus();
       if (!audioWarmed) warmUpAudio();
@@ -953,13 +886,13 @@
         return;
       }
 
-      // Ctrl+Enter => finish page
       if (e.key === 'Enter' && e.ctrlKey) {
         if (isTyping) { e.preventDefault(); return; }
 
         isTyping = true;
-        const paperOut = document.getElementById('paper-out-sound');
+        document.body.classList.add('hide-cursor');
 
+        const paperOut = document.getElementById('paper-out-sound');
         if (paperOut) {
           try {
             paperOut.currentTime = 0;
@@ -967,20 +900,23 @@
           } catch {}
         }
 
-        setTimeout(() => {
-          finishPageWithLongLock();
-        }, ENTER_ACTION_DELAY);
+       finishPageWithLongLock();
 
         e.preventDefault();
         return;
       }
 
-      // Enter => animated carriage return
       if (e.key === 'Enter') {
         if (isTyping) { e.preventDefault(); return; }
         if (e.repeat) { e.preventDefault(); return; }
 
         isTyping = true;
+        document.body.classList.add('hide-cursor');
+
+        try {
+          enterLong.currentTime = 0;
+          enterLong.play();
+        } catch {}
 
         const startRow = cursorRow;
         const startCol = cursorCol;
@@ -991,50 +927,35 @@
 
         renderPage();
 
-        const finishEnterAction = () => {
-          if (isLastTextRow) {
-            finishPageWithLongLock();
-            return;
-          }
+if (!isLastTextRow) {
+  // Move the page/viewport first
+  cursorRow = endRow;
+  cursorCol = endCol;
+  positionViewport();
+}
 
-          cursorRow = endRow;
-          cursorCol = endCol;
-          renderPage();
-          positionViewport();
-          isTyping = false;
-        };
+animateEnterTravel(startRow, startCol, endRow, endCol, ENTER_ACTION_DELAY, () => {
+  if (isLastTextRow) {
+    finishPageWithLongLock();
+    return;
+  }
 
-        const durationMs = ENTER_ANIMATION_DURATION_MS;
-        let pendingAnimations = 2;
-        const handleAnimationDone = () => {
-          pendingAnimations--;
-          if (pendingAnimations <= 0) finishEnterAction();
-        };
-
-        try {
-          enterLong.currentTime = 0;
-          enterLong.play();
-        } catch {
-          // no-op: animation should still proceed even if audio is blocked
-        }
-
-        animateEnterTravel(startRow, startCol, endRow, endCol, durationMs, handleAnimationDone);
-        animateViewportForEnter(startRow, endRow, durationMs, handleAnimationDone);
-
+  // Re-render only after the fake cursor animation is done
+  renderPage();
+  document.body.classList.remove('hide-cursor');
+  isTyping = false;
+});
         e.preventDefault();
         return;
       }
 
-      // Backspace => moves cursor only
       if (e.key === 'Backspace') {
         if (isTyping) { e.preventDefault(); return; }
         isTyping = true;
-
         try {
           nokeySound.currentTime = 0;
           nokeySound.play();
         } catch {}
-
         setTimeout(() => {
           if (cursorCol > FIRST_TEXT_COL) {
             cursorCol--;
@@ -1046,15 +967,12 @@
           positionViewport();
           isTyping = false;
         }, SHORT_DELAY);
-
         e.preventDefault();
         return;
       }
 
-      // Space
       if (e.key === ' ') {
         if (isTyping) { e.preventDefault(); return; }
-
         if (
           cursorRow >= TOP_MARGIN_ROWS &&
           cursorRow < TOP_MARGIN_ROWS + TEXT_LINES &&
@@ -1062,12 +980,10 @@
           cursorCol <= LAST_TEXT_COL
         ) {
           isTyping = true;
-
           try {
             nokeySound.currentTime = 0;
             nokeySound.play();
           } catch {}
-
           setTimeout(() => {
             const stack = currentData[cursorRow][cursorCol];
             const shade = Math.random() * 0.4 + 0.6;
@@ -1075,24 +991,19 @@
             const r = Math.random();
             if (r < SHIFT_PROB / 2) yOffset = -1;
             else if (r < SHIFT_PROB) yOffset = 1;
-
             stack.push({ ch: ' ', shade, yOffset });
-
             if (cursorCol < LAST_TEXT_COL) cursorCol++;
             renderPage();
             positionViewport();
             isTyping = false;
           }, SHORT_DELAY);
         }
-
         e.preventDefault();
         return;
       }
 
-      // Printable characters
-      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+      if (e.key.length === 1) {
         if (isTyping) { e.preventDefault(); return; }
-
         if (
           cursorRow >= TOP_MARGIN_ROWS &&
           cursorRow < TOP_MARGIN_ROWS + TEXT_LINES &&
@@ -1101,7 +1012,6 @@
         ) {
           isTyping = true;
           playKeyClick();
-
           setTimeout(() => {
             const stack = currentData[cursorRow][cursorCol];
             const shade = Math.random() * 0.4 + 0.6;
@@ -1109,18 +1019,14 @@
             const r = Math.random();
             if (r < SHIFT_PROB / 2) yOffset = -1;
             else if (r < SHIFT_PROB) yOffset = 1;
-
             stack.push({ ch: e.key, shade, yOffset });
-
             if (cursorCol === BELL_COL) playBell();
             if (cursorCol < LAST_TEXT_COL) cursorCol++;
-
             renderPage();
             positionViewport();
             isTyping = false;
           }, SHORT_DELAY);
         }
-
         e.preventDefault();
         return;
       }
@@ -1128,7 +1034,6 @@
 
     function handleKeyUp(e) {}
 
-    // ---------- RENDER SAVED PAGE ----------
     function buildPageDOM(pageData) {
       const pageRecord = normalizePageRecord(pageData);
       const pageStacks = pageRecord.stacks;
@@ -1158,7 +1063,6 @@
           if (displayStack.length) {
             const stackDiv = document.createElement('span');
             stackDiv.className = 'overstrike-stack';
-
             displayStack.forEach((item, k) => {
               const overSpan = document.createElement('span');
               overSpan.textContent = item.ch;
@@ -1167,7 +1071,6 @@
               overSpan.style.top = `calc(50% + ${item.yOffset}px)`;
               stackDiv.appendChild(overSpan);
             });
-
             cell.appendChild(stackDiv);
           }
 
@@ -1180,7 +1083,6 @@
       return paper;
     }
 
-    // ---------- THUMBNAILS ----------
     function createThumbnail(pageData, index) {
       const pageRecord = normalizePageRecord(pageData);
 
@@ -1217,12 +1119,11 @@
       });
 
       wrapper.addEventListener('click', () => {
-        openPreview(index, pagesData);
+        openPreview(pageRecord, index, pagesData);
       });
     }
 
-    // ---------- PREVIEW ----------
-    function openPreview(index, pagesDataRef) {
+    function openPreview(pageData, index, pagesDataRef) {
       const overlay = document.createElement('div');
       overlay.className = 'preview-overlay';
 
@@ -1241,7 +1142,6 @@
 
       const prevBtn = document.createElement('button');
       prevBtn.textContent = '← Prev';
-
       const nextBtn = document.createElement('button');
       nextBtn.textContent = 'Next →';
 
@@ -1252,7 +1152,6 @@
 
       const downloadBtn = document.createElement('button');
       downloadBtn.textContent = 'Download PDF';
-
       const closeBtn = document.createElement('button');
       closeBtn.textContent = 'Close';
 
@@ -1267,14 +1166,14 @@
       const content = document.createElement('div');
       content.className = 'preview-content';
 
-      let previewPaper = buildPageDOM(pagesDataRef[index]);
+      let previewPaper = buildPageDOM(pageData);
       previewPaper.classList.add('preview-paper');
       content.appendChild(previewPaper);
 
-      dialog.appendChild(header);
-      dialog.appendChild(content);
-      overlay.appendChild(dialog);
-      document.body.appendChild(overlay);
+   dialog.appendChild(header);
+dialog.appendChild(content);
+overlay.appendChild(dialog);
+document.body.appendChild(overlay);
 
       function loadPage(newIndex, direction) {
         if (!pagesDataRef) return;
@@ -1286,7 +1185,6 @@
         const inClass  = direction === 'next' ? 'slide-in-right' : 'slide-in-left';
 
         oldPaper.classList.add(outClass);
-
         oldPaper.addEventListener('animationend', () => {
           oldPaper.remove();
 
@@ -1317,26 +1215,36 @@
       }
 
       closeBtn.addEventListener('click', closeOverlay);
-      overlay.addEventListener('click', e => {
+      overlay.addEventListener('click', (e) => {
         if (e.target === overlay) closeOverlay();
       });
 
-      downloadBtn.addEventListener('click', () => {
-        if (!pagesDataRef || pagesDataRef.length === 0) return;
+     downloadBtn.addEventListener('click', () => {
+  if (pagesDataRef && pagesDataRef.length > 0) {
+    generateAllPagesPDF(pagesDataRef);
+  }
+});
 
-        if (pagesDataRef.length === 1) {
-          generatePDF(pagesDataRef[0], 0);
-        } else {
+      btnAll.addEventListener('click', () => {
+        if (pagesDataRef && pagesDataRef.length > 0) {
           generateAllPagesPDF(pagesDataRef);
         }
+        downloadPromptOverlay.style.display = 'none';
       });
     }
 
-    // ---------- PDF ----------
+    function getDateFilename() {
+      const now = new Date();
+      const day = String(now.getDate()).padStart(2, '0');
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const year = now.getFullYear();
+      return `${day}-${month}-${year}.pdf`;
+    }
+
     function generatePDF(pageData, index) {
       const pageRecord = normalizePageRecord(pageData);
       const pageStacks = pageRecord.stacks;
-      const wordCount = pageRecord.wordCount;
+
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ unit: 'pt', format: 'A4' });
 
@@ -1352,8 +1260,8 @@
       for (let r = 0; r < TOTAL_ROWS; r++) {
         let x = marginLeft;
         for (let c = 0; c < COLS; c++) {
-          const displayStack = getDisplayStack(pageStacks, wordCount, r, c);
-          displayStack.forEach(item => {
+          const stack = pageStacks[r][c];
+          stack.forEach(item => {
             const grayVal = Math.round((1 - item.shade) * 255);
             doc.setTextColor(grayVal, grayVal, grayVal);
             const yShift = item.yOffset * 1;
@@ -1365,11 +1273,7 @@
         y += lineHeight;
       }
 
-      const now = new Date();
-      const day = String(now.getDate()).padStart(2, '0');
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const year = now.getFullYear();
-      doc.save(`${day}-${month}-${year}.pdf`);
+      doc.save(getDateFilename());
     }
 
     function generateAllPagesPDF(pagesDataRef) {
@@ -1385,18 +1289,18 @@
       pagesDataRef.forEach((pageData, pageIndex) => {
         const pageRecord = normalizePageRecord(pageData);
         const pageStacks = pageRecord.stacks;
-        const wordCount = pageRecord.wordCount;
 
-        if (pageIndex > 0) doc.addPage();
-
+        if (pageIndex > 0) {
+          doc.addPage();
+        }
         let y = 40;
         const marginLeft = 40;
 
         for (let r = 0; r < TOTAL_ROWS; r++) {
           let x = marginLeft;
           for (let c = 0; c < COLS; c++) {
-            const displayStack = getDisplayStack(pageStacks, wordCount, r, c);
-            displayStack.forEach(item => {
+            const stack = pageStacks[r][c];
+            stack.forEach(item => {
               const grayVal = Math.round((1 - item.shade) * 255);
               doc.setTextColor(grayVal, grayVal, grayVal);
               const yShift = item.yOffset * 1;
@@ -1409,14 +1313,9 @@
         }
       });
 
-      const now = new Date();
-      const day = String(now.getDate()).padStart(2, '0');
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const year = now.getFullYear();
-      doc.save(`${day}-${month}-${year}.pdf`);
+      doc.save(getDateFilename());
     }
 
-    // ---------- RESET ----------
     function hardReset() {
       if (!paperDiv || !viewportElem.contains(paperDiv)) {
         pagesData = [];
@@ -1447,17 +1346,16 @@
           if (viewportElem.contains(paperDiv)) {
             viewportElem.removeChild(paperDiv);
           }
-
           rightFrame.querySelectorAll('.thumbnail-wrapper').forEach(el => el.remove());
           pagesData = [];
           viewportElem.style.overflow = 'hidden';
-          viewportElem.style.height = '';
+          document.body.classList.remove('hide-cursor');
+          isTyping = false;
           createPaperArea();
         }, { once: true });
       }
     }
 
-    // ---------- STARTUP ----------
     document.addEventListener('DOMContentLoaded', () => {
       pagesData = [];
       createPaperArea();
@@ -1473,7 +1371,6 @@
           document.body.classList.toggle('right-collapsed');
           const collapsed = document.body.classList.contains('right-collapsed');
           toggleRightBtn.textContent = collapsed ? 'Show' : 'Hide';
-
           if (paperDiv) {
             measureRowPx();
             renderPage();
@@ -1484,15 +1381,12 @@
 
       const modal = document.getElementById('infoModal');
       const confirmBtn = document.getElementById('infoModalConfirm');
-
       if (modal && confirmBtn) {
         document.body.classList.add('modal-open');
-
         confirmBtn.addEventListener('click', () => {
           modal.classList.add('hidden');
           document.body.classList.remove('modal-open');
           warmUpAudio();
-
           if (paperDiv) {
             requestAnimationFrame(() => paperDiv.focus({ preventScroll: true }));
           }
@@ -1500,7 +1394,6 @@
       }
     });
 
-    // ---------- RESIZE ----------
     window.addEventListener('resize', () => {
       if (paperDiv) {
         measureRowPx();
