@@ -832,6 +832,43 @@
       animation.oncancel = finalize;
     }
 
+    function animateViewportForEnter(startRow, endRow, durationMs, onDone) {
+      const startVisibleRows = Math.max(VISIBLE_INITIAL, startRow + 2);
+      const endVisibleRows = Math.max(VISIBLE_INITIAL, endRow + 2);
+      const startHeight = rowPx * startVisibleRows;
+      const endHeight = rowPx * endVisibleRows;
+
+      viewportElem.style.bottom = '0';
+      viewportElem.style.left = '0';
+      viewportElem.style.right = '0';
+
+      if (Math.abs(endHeight - startHeight) < 0.5) {
+        viewportElem.style.height = `${endHeight}px`;
+        onDone();
+        return;
+      }
+
+      const animation = viewportElem.animate(
+        [
+          { height: `${startHeight}px` },
+          { height: `${endHeight}px` }
+        ],
+        {
+          duration: durationMs,
+          easing: 'linear',
+          fill: 'forwards'
+        }
+      );
+
+      const finalize = () => {
+        viewportElem.style.height = `${endHeight}px`;
+        onDone();
+      };
+
+      animation.onfinish = finalize;
+      animation.oncancel = finalize;
+    }
+
     // ---------- PAGE COMPLETION ----------
     function finalizeCurrentPage() {
       const pageStacks = JSON.parse(JSON.stringify(currentData));
@@ -924,44 +961,22 @@
           isTyping = false;
         };
 
-        const startTravelAnimation = () => {
-          const durationMs = getEnterAnimationDurationMs();
-          animateEnterTravel(startRow, startCol, endRow, endCol, durationMs, finishEnterAction);
+        const durationMs = getEnterAnimationDurationMs();
+        let pendingAnimations = 2;
+        const handleAnimationDone = () => {
+          pendingAnimations--;
+          if (pendingAnimations <= 0) finishEnterAction();
         };
-
-        let animationStarted = false;
-        const beginOnce = () => {
-          if (animationStarted) return;
-          animationStarted = true;
-          startTravelAnimation();
-        };
-
-        const handlePlaying = () => {
-          enterLong.removeEventListener('playing', handlePlaying);
-          beginOnce();
-        };
-
-        enterLong.addEventListener('playing', handlePlaying);
 
         try {
           enterLong.currentTime = 0;
-          const playPromise = enterLong.play();
-
-          if (playPromise && typeof playPromise.catch === 'function') {
-            playPromise.catch(() => {
-              enterLong.removeEventListener('playing', handlePlaying);
-              beginOnce();
-            });
-          }
+          enterLong.play();
         } catch {
-          enterLong.removeEventListener('playing', handlePlaying);
-          beginOnce();
+          // no-op: animation should still proceed even if audio is blocked
         }
 
-        setTimeout(() => {
-          enterLong.removeEventListener('playing', handlePlaying);
-          beginOnce();
-        }, 50);
+        animateEnterTravel(startRow, startCol, endRow, endCol, durationMs, handleAnimationDone);
+        animateViewportForEnter(startRow, endRow, durationMs, handleAnimationDone);
 
         e.preventDefault();
         return;
