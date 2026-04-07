@@ -689,7 +689,6 @@
 
     function createPaperArea() {
       initBlankPage();
-      resetViewportForFreshPage();
 
       if (paperDiv && viewportElem.contains(paperDiv)) {
         if (typeof paperDiv.getAnimations === 'function') {
@@ -702,19 +701,19 @@
         viewportElem.removeChild(paperDiv);
       }
 
+      measureRowPx();
+      resetViewportForFreshPage();
+
       paperDiv = document.createElement('div');
       paperDiv.className = 'paper-area';
       paperDiv.id = 'paper-area';
       paperDiv.setAttribute('tabindex', '0');
       paperDiv.classList.remove('paper-out');
+      paperDiv.style.height = (rowPx * TOTAL_ROWS) + 'px';
+      paperDiv.style.visibility = 'hidden';
       paperDiv.style.animation = 'none';
       paperDiv.style.transform = 'none';
       paperDiv.style.transition = 'none';
-      viewportElem.appendChild(paperDiv);
-      void paperDiv.offsetHeight;
-      paperDiv.style.animation = '';
-      paperDiv.style.transform = '';
-      paperDiv.style.transition = '';
 
       paperDiv.addEventListener('keydown', handleKey);
       paperDiv.addEventListener('keyup', handleKeyUp);
@@ -723,12 +722,16 @@
         e.preventDefault();
       });
 
-      requestAnimationFrame(() => {
-        measureRowPx();
-        renderPage();
-        positionViewport();
-        paperDiv.focus();
-      });
+      viewportElem.appendChild(paperDiv);
+      renderPage();
+      positionViewport();
+      void paperDiv.offsetHeight;
+
+      paperDiv.style.visibility = '';
+      paperDiv.style.animation = '';
+      paperDiv.style.transform = '';
+      paperDiv.style.transition = '';
+      paperDiv.focus();
     }
 
     function measureRowPx() {
