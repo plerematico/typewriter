@@ -232,9 +232,16 @@
       animation: blinkBox 1.2s steps(1) infinite;
     }
 
-    /* Hide cursor while long Enter sound is playing */
-    .hide-cursor .cell.cursor::before {
-      display: none;
+    .enter-travel-cursor {
+      position: absolute;
+      width: calc(var(--cell-size, 24px) - 4px);
+      height: calc(var(--row-height, 24px) * 0.8);
+      border-radius: 2px;
+      border: 1px solid rgba(0,0,0,0.6);
+      background: rgba(200,200,200,0.45);
+      box-sizing: border-box;
+      pointer-events: none;
+      z-index: 999;
     }
 
     .cell, .cell * { user-select: none; }
@@ -609,11 +616,6 @@
 
     initKeyClickPool();
 
-    enterLong.addEventListener('ended', () => {
-      document.body.classList.remove('hide-cursor');
-      isTyping = false;
-    });
-
     // ---------- AUDIO HELPERS ----------
 
     function warmUpAudio() {
@@ -820,6 +822,62 @@
       }
     }
 
+    function getCellWidthPx() {
+      const firstCell = paperDiv ? paperDiv.querySelector('.paper-row .cell') : null;
+      if (firstCell) return firstCell.getBoundingClientRect().width;
+      const cssValue = getComputedStyle(document.documentElement).getPropertyValue('--cell-size');
+      const parsed = parseFloat(cssValue);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : 24;
+    }
+
+    function getEnterAnimationDurationMs() {
+      const durationSeconds = enterLong && Number.isFinite(enterLong.duration) ? enterLong.duration : 0;
+      return durationSeconds > 0 ? durationSeconds * 1000 : 700;
+    }
+
+    function animateEnterTravel(startRow, startCol, endRow, endCol, onDone) {
+      const cellWidth = getCellWidthPx();
+      const startX = startCol * cellWidth + (cellWidth / 2);
+      const startY = startRow * rowPx + (rowPx / 2);
+      const endX = endCol * cellWidth + (cellWidth / 2);
+      const endY = endRow * rowPx + (rowPx / 2);
+
+      const travelCursor = document.createElement('div');
+      travelCursor.className = 'enter-travel-cursor';
+      travelCursor.style.left = `${startX}px`;
+      travelCursor.style.top = `${startY}px`;
+      paperDiv.appendChild(travelCursor);
+
+      const horizontalDistance = Math.abs(endX - startX);
+      const verticalDistance = Math.abs(endY - startY);
+      const totalDistance = horizontalDistance + verticalDistance;
+      const horizontalShare = totalDistance > 0 ? (horizontalDistance / totalDistance) : 1;
+
+      const keyframes = endRow !== startRow
+        ? [
+            { left: `${startX}px`, top: `${startY}px`, offset: 0 },
+            { left: `${endX}px`, top: `${startY}px`, offset: horizontalShare },
+            { left: `${endX}px`, top: `${endY}px`, offset: 1 }
+          ]
+        : [
+            { left: `${startX}px`, top: `${startY}px`, offset: 0 },
+            { left: `${endX}px`, top: `${endY}px`, offset: 1 }
+          ];
+
+      const animation = travelCursor.animate(keyframes, {
+        duration: getEnterAnimationDurationMs(),
+        easing: 'linear',
+        fill: 'forwards'
+      });
+
+      const finalize = () => {
+        travelCursor.remove();
+        onDone();
+      };
+      animation.onfinish = finalize;
+      animation.oncancel = finalize;
+    }
+
     // ---------- PAGE FINISH HELPERS ----------
 
     function finishPageWithLongLock() {
@@ -836,7 +894,6 @@
         viewportElem.style.overflow = 'hidden';
 
         // ensure we never stay "locked" after page change
-        document.body.classList.remove('hide-cursor');
         isTyping = false;
 
         createPaperArea();
@@ -866,7 +923,6 @@
         if (isTyping) { e.preventDefault(); return; }
 
         isTyping = true;
-        document.body.classList.add('hide-cursor');
 
         const paperOut = document.getElementById('paper-out-sound');
         if (paperOut) {
@@ -884,32 +940,38 @@
         return;
       }
 
-      // Enter: single behavior (carriage return)
+      // Enter: animated carriage return
       if (e.key === 'Enter') {
         if (isTyping) { e.preventDefault(); return; }
         if (e.repeat) { e.preventDefault(); return; }
 
         isTyping = true;
-        document.body.classList.add('hide-cursor');
+
+        const startRow = cursorRow;
+        const startCol = cursorCol;
+        const lastTextRow = TOP_MARGIN_ROWS + TEXT_LINES - 1;
+        const isLastTextRow = startRow >= lastTextRow;
+        const endRow = isLastTextRow ? startRow : startRow + 1;
+        const endCol = FIRST_TEXT_COL;
+
+        renderPage();
         try {
           enterLong.currentTime = 0;
           enterLong.play();
         } catch {}
 
-        const lastTextRow = TOP_MARGIN_ROWS + TEXT_LINES - 1;
-
-        if (cursorRow < lastTextRow) {
-          setTimeout(() => {
-            cursorRow++;
-            cursorCol = FIRST_TEXT_COL;
-            renderPage();
-            positionViewport();
-          }, ENTER_ACTION_DELAY);
-        } else {
-          setTimeout(() => {
+        animateEnterTravel(startRow, startCol, endRow, endCol, () => {
+          if (isLastTextRow) {
             finishPageWithLongLock();
-          }, ENTER_ACTION_DELAY);
-        }
+            return;
+          }
+
+          cursorRow = endRow;
+          cursorCol = endCol;
+          renderPage();
+          positionViewport();
+          isTyping = false;
+        });
 
         e.preventDefault();
         return;
