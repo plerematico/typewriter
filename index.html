@@ -840,12 +840,8 @@
 
     function finishPageWithLongLock() {
       const pageStacks = JSON.parse(JSON.stringify(currentData));
-      const pageRecord = {
-        stacks: pageStacks,
-        wordCount: countWordsInPage(pageStacks)
-      };
-      pagesData.push(pageRecord);
-      createThumbnail(pageRecord, pagesData.length - 1);
+      pagesData.push(pageStacks);
+      createThumbnail(pageStacks, pagesData.length - 1);
 
       viewportElem.style.overflow = 'visible';
       paperDiv.classList.add('paper-out');
@@ -1060,31 +1056,6 @@
 
     function handleKeyUp(e) {
       // nothing here for now
-    }
-
-    async function ensureJsPDFLoaded() {
-      if (window.jspdf && window.jspdf.jsPDF) return true;
-
-      const existing = document.querySelector('script[data-jspdf-dynamic="1"]');
-      if (existing) {
-        await new Promise((resolve) => {
-          existing.addEventListener('load', resolve, { once: true });
-          existing.addEventListener('error', resolve, { once: true });
-        });
-        return !!(window.jspdf && window.jspdf.jsPDF);
-      }
-
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-      script.dataset.jspdfDynamic = '1';
-
-      await new Promise((resolve) => {
-        script.addEventListener('load', resolve, { once: true });
-        script.addEventListener('error', resolve, { once: true });
-        document.head.appendChild(script);
-      });
-
-      return !!(window.jspdf && window.jspdf.jsPDF);
     }
 
     // ---------- BUILD PAGE DOM (base, no preview-specific classes) ----------
@@ -1305,18 +1276,27 @@
         if (e.target === overlay) closeOverlay();
       });
 
-      downloadBtn.addEventListener('click', async () => {
-        if (!pagesDataRef || pagesDataRef.length === 0) return;
-        const hasJsPdf = await ensureJsPDFLoaded();
-        if (!hasJsPdf) {
-          alert('PDF export is unavailable because the jsPDF library did not load.');
-          return;
+      // Download button opens the small popup
+      downloadBtn.addEventListener('click', () => {
+        downloadPromptOverlay.style.display = 'flex';
+      });
+
+      btnCancel.addEventListener('click', () => {
+        downloadPromptOverlay.style.display = 'none';
+      });
+
+      btnCurrent.addEventListener('click', () => {
+        if (pagesDataRef && pagesDataRef[index]) {
+          generatePDF(pagesDataRef[index], index);
         }
-        if (pagesDataRef.length === 1) {
-          generatePDF(pagesDataRef[0], 0);
-          return;
+        downloadPromptOverlay.style.display = 'none';
+      });
+
+      btnAll.addEventListener('click', () => {
+        if (pagesDataRef && pagesDataRef.length > 0) {
+          generateAllPagesPDF(pagesDataRef);
         }
-        generateAllPagesPDF(pagesDataRef);
+        downloadPromptOverlay.style.display = 'none';
       });
     }
 
