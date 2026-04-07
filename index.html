@@ -4,18 +4,16 @@
   <meta charset="UTF-8">
   <title>Typewriter Challenge</title>
 
-  <!-- Include jsPDF for PDF export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <style>
     :root {
-      /* Warm, cozy preview palette */
-      --preview-bg: #f2e9da;             /* outer frame background */
-      --preview-inner-bg: #e8dcc3;       /* inner content background */
-      --preview-border: #b39a79;         /* frame & inner border */
-      --preview-button-bg: #d8b38c;      /* button background */
-      --preview-button-bg-hover: #cda079;/* button hover */
-      --preview-text: #4a3728;           /* text color */
+      --preview-bg: #f2e9da;
+      --preview-inner-bg: #e8dcc3;
+      --preview-border: #b39a79;
+      --preview-button-bg: #d8b38c;
+      --preview-button-bg-hover: #cda079;
+      --preview-text: #4a3728;
     }
 
     html, body {
@@ -36,10 +34,10 @@
       width: 100vw;
     }
 
-    /* Tiny toggle for right panel */
     .panel-toggle {
       position: absolute;
       top: 6px;
+      right: 6px;
       z-index: 1000;
       padding: 2px 6px;
       font-size: 0.7em;
@@ -51,9 +49,7 @@
       transition: opacity 0.2s;
     }
     .panel-toggle:hover { opacity: 1; }
-    .panel-toggle-right { right: 6px; }
 
-    /* ALWAYS-VISIBLE HARD RESET BUTTON (bottom-left, two lines, 20px offset) */
     .hard-reset-button {
       position: fixed;
       bottom: 20px;
@@ -82,7 +78,6 @@
       transform: translateY(1px);
     }
 
-    /* CENTER PANEL (background image) */
     .center-frame {
       flex: 1 1 auto;
       min-width: 0;
@@ -107,7 +102,7 @@
     }
 
     .paper-area {
-      background: #FFFFFF;
+      background: #fff;
       border-radius: 0;
       box-shadow: 0 60px 60px #0008;
       border: 2.5px solid #bbb6b6;
@@ -122,16 +117,13 @@
     }
 
     @keyframes slide-out {
-      to {
-        transform: translateY(-100%);
-      }
+      to { transform: translateY(-100%); }
     }
 
     .paper-area.paper-out {
       animation: slide-out 1s ease-in forwards;
     }
 
-    /* RIGHT PANEL */
     .right-frame {
       flex: 0 0 15vw;
       min-width: 150px;
@@ -146,6 +138,7 @@
       box-shadow: -6px 0 14px rgba(0, 0, 0, 0.75);
       z-index: 2;
     }
+
     .right-frame h2 {
       margin-top: 0;
       font-size: 1.2em;
@@ -161,27 +154,30 @@
       margin-bottom: 8px;
       cursor: pointer;
     }
+
     .thumbnail {
-      background: #ffffff;
+      background: #fff;
       border: 1px solid #888;
       display: inline-block;
       box-sizing: border-box;
       overflow: hidden;
       position: relative;
     }
+
     .thumbnail-label {
       text-align: center;
       margin-top: 4px;
       font-size: 0.8em;
       color: #f5f5f5;
       text-shadow: 0 1px 2px #000;
+      line-height: 1.25;
     }
 
-    /* PAPER GRID with A4-ish aspect via CSS vars */
     .paper-row {
       display: flex;
       height: var(--row-height, 24px);
     }
+
     .cell {
       width: var(--cell-size, 24px);
       min-width: var(--cell-size, 24px);
@@ -196,6 +192,7 @@
       font-family: 'Courier', monospace;
       color: rgba(0,0,0,1);
     }
+
     .cell.margin { background: #fff; }
     .cell.textarea { background: #fff; }
 
@@ -203,6 +200,7 @@
       position: relative;
       display: inline-block;
     }
+
     .cell .overstrike-stack span {
       position: absolute;
       left: 50%;
@@ -212,11 +210,11 @@
       text-shadow: 0 0 3px #fff7, 1px 1px 1px #2321;
     }
 
-    /* Cursor box */
     @keyframes blinkBox {
       0%, 50% { opacity: 1; }
       50%, 100% { opacity: 0; }
     }
+
     .cell.cursor::before {
       content: "";
       position: absolute;
@@ -246,7 +244,6 @@
 
     .cell, .cell * { user-select: none; }
 
-    /* Collapsed right panel */
     body.right-collapsed .right-frame {
       flex-basis: 12px;
       min-width: 12px;
@@ -255,6 +252,7 @@
       overflow: hidden;
       box-shadow: -4px 0 10px rgba(0,0,0,0.8);
     }
+
     body.right-collapsed .right-frame > * {
       opacity: 0;
       pointer-events: none;
@@ -265,7 +263,6 @@
       .right-frame { min-width: 120px; }
     }
 
-    /* PREVIEW OVERLAY */
     .preview-overlay {
       position: fixed;
       inset: 0;
@@ -290,21 +287,25 @@
       box-sizing: border-box;
       border: 2px solid var(--preview-border);
     }
+
     .preview-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 6px;
     }
+
     .preview-title {
       font-family: 'Arial Black', Arial, sans-serif;
       font-size: 1em;
       color: var(--preview-text);
     }
+
     .preview-buttons {
       display: flex;
       gap: 6px;
     }
+
     .preview-buttons button {
       font-size: 0.8em;
       padding: 3px 7px;
@@ -315,6 +316,7 @@
       color: var(--preview-text);
       transition: background 0.15s ease;
     }
+
     .preview-buttons button:hover {
       background: var(--preview-button-bg-hover);
     }
@@ -336,16 +338,17 @@
       box-shadow: 0 10px 20px rgba(0,0,0,0.4);
       border: 1px solid #ddd;
       display: inline-block;
-      background: #ffffff;
+      background: #fff;
     }
+
     .preview-paper .cell.cursor::before {
       display: none;
     }
 
-    /* Preview page scaled to 75% via layout (not transform) */
     .preview-paper .paper-row {
       height: calc(var(--row-height) * 0.75);
     }
+
     .preview-paper .cell {
       width: calc(var(--cell-size) * 0.75);
       min-width: calc(var(--cell-size) * 0.75);
@@ -354,7 +357,6 @@
       line-height: calc(var(--row-height) * 0.75);
     }
 
-    /* Horizontal slide animations for page switching */
     @keyframes slideOutLeft {
       from { opacity: 1; transform: translateX(0); }
       to   { opacity: 0; transform: translateX(-60px); }
@@ -380,7 +382,6 @@
     .preview-paper.slide-out-right { animation: slideOutRight 0.22s ease-out forwards; }
     .preview-paper.slide-in-left   { animation: slideInLeft 0.22s ease-out forwards; }
 
-    /* PAGE-LOAD INFO MODAL */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -390,9 +391,11 @@
       justify-content: center;
       z-index: 3000;
     }
+
     .modal-overlay.hidden {
       display: none;
     }
+
     .modal-dialog {
       max-width: 520px;
       width: 90%;
@@ -403,30 +406,37 @@
       font-family: inherit;
       box-sizing: border-box;
     }
+
     .modal-dialog h2 {
       margin-top: 0;
       margin-bottom: 0.75rem;
       font-size: 1.3rem;
     }
+
     .modal-body {
       font-size: 0.95rem;
       line-height: 1.5;
       margin-bottom: 1.25rem;
     }
+
     .modal-body p + p {
       margin-top: 0.75rem;
     }
+
     .modal-body ul {
       margin: 0.4rem 0 0.4rem 1.2rem;
       padding: 0;
     }
+
     .modal-body li {
       margin-bottom: 0.2rem;
     }
+
     .modal-footer {
       display: flex;
       justify-content: flex-end;
     }
+
     .modal-confirm-button {
       padding: 0.5rem 1.25rem;
       font-size: 0.95rem;
@@ -437,24 +447,25 @@
       color: #fff;
       transition: background 0.15s ease, transform 0.1s ease;
     }
+
     .modal-confirm-button:hover {
       background: #1f2a36;
     }
+
     .modal-confirm-button:active {
       transform: translateY(1px);
     }
+
     body.modal-open {
       overflow: hidden;
     }
   </style>
 </head>
 <body>
-  <!-- Always-visible Hard Reset (two-line label) -->
   <button id="hardResetButton" class="hard-reset-button">
     Hard<br>Reset
   </button>
 
-  <!-- Blocking info / instructions modal -->
   <div id="infoModal" class="modal-overlay">
     <div class="modal-dialog">
       <h2>Typewriter Challenge – Read before you start</h2>
@@ -484,21 +495,15 @@
     </div>
   </div>
 
-  <!-- Tiny toggle button for the right panel -->
-  <button id="toggle-right-btn" class="panel-toggle panel-toggle-right">Hide</button>
+  <button id="toggle-right-btn" class="panel-toggle">Hide</button>
 
   <div class="main-layout">
-    <!-- CENTER PANEL -->
     <div class="center-frame" id="center-frame">
-      <div class="viewport" id="viewport">
-        <!-- JS injects paper-area here -->
-      </div>
+      <div class="viewport" id="viewport"></div>
     </div>
 
-    <!-- RIGHT PANEL -->
     <div class="right-frame" id="right-frame">
       <h2>Finished Pages</h2>
-      <!-- Thumbnails appear here -->
     </div>
   </div>
 
@@ -509,11 +514,11 @@
   <audio id="paper-out-sound" src="paper out.wav" preload="auto"></audio>
 
   <script>
-    // SETTINGS & STATE
+    // ---------- SETTINGS ----------
     const TOP_MARGIN_ROWS    = 2;
     const TEXT_LINES         = 35;
     const BOTTOM_MARGIN_ROWS = 2;
-    const TOTAL_ROWS         = TOP_MARGIN_ROWS + TEXT_LINES + BOTTOM_MARGIN_ROWS; // 39
+    const TOTAL_ROWS         = TOP_MARGIN_ROWS + TEXT_LINES + BOTTOM_MARGIN_ROWS;
     const COLS               = 65;
     const LEFT_MARGIN        = 5;
     const RIGHT_MARGIN       = 5;
@@ -528,6 +533,7 @@
     const SHIFT_PROB         = 0.1;
     const ENTER_ACTION_DELAY = 60;
 
+    // ---------- DOM ----------
     const viewportElem = document.getElementById('viewport');
     const rightFrame   = document.getElementById('right-frame');
     const bell         = document.getElementById('bell');
@@ -535,58 +541,28 @@
     const enterLong    = document.getElementById('enter-long-sound');
     const nokeySound   = document.getElementById('nokey-sound');
 
+    // ---------- STATE ----------
     let pagesData = [];
     let currentData;
     let cursorRow, cursorCol;
     let paperDiv;
     let rowPx = 0;
     let isTyping = false;
-
-    const KEY_CLICK_POOL_SIZE = 6;
-
     let audioWarmed = false;
     let canPlayKeySound = true;
-    let nextKeyClickIndex = 0;
 
-    const keyClickPool = [];
-
-    let audioCtx = null;
-    let keyClickBuffer = null;
-
-    function initKeyClickPool() {
-      if (!keyClick) return;
-      keyClickPool.length = 0;
-      keyClickPool.push(keyClick);
-
-      const parent = keyClick.parentNode;
-      for (let i = 1; i < KEY_CLICK_POOL_SIZE; i++) {
-        try {
-          const clone = keyClick.cloneNode(true);
-          clone.id = `keypress-sound-${i}`;
-          if (parent) parent.appendChild(clone);
-          keyClickPool.push(clone);
-        } catch {}
-      }
-    }
-
-    initKeyClickPool();
-
-    // ---------- AUDIO HELPERS ----------
-
+    // ---------- AUDIO ----------
     function warmUpAudio() {
       if (audioWarmed) return;
       audioWarmed = true;
 
-      const sounds = [keyClick, enterLong, bell, nokeySound];
-      sounds.forEach(a => {
+      [keyClick, enterLong, bell, nokeySound].forEach(a => {
         if (!a || !a.src) return;
         try {
           const clone = new Audio(a.src);
           clone.muted = true;
           const p = clone.play();
-          if (p && typeof p.catch === 'function') {
-            p.catch(() => {});
-          }
+          if (p && typeof p.catch === 'function') p.catch(() => {});
           setTimeout(() => {
             try {
               clone.pause();
@@ -617,31 +593,11 @@
         if (p && typeof p.catch === 'function') {
           p.catch(() => { canPlayKeySound = true; });
         }
-        bell.onended = () => {
-          canPlayKeySound = true;
-        };
-      } catch {
-        if (window.AudioContext) {
-          const ctx = new (window.AudioContext || window.webkitAudioContext)();
-          const o   = ctx.createOscillator();
-          const g   = ctx.createGain();
-          o.type = 'sine';
-          o.frequency.value = 920;
-          g.gain.value = 0.07;
-          o.connect(g);
-          g.connect(ctx.destination);
-          o.start();
-          o.stop(ctx.currentTime + 0.13);
-          setTimeout(() => {
-            canPlayKeySound = true;
-            ctx.close();
-          }, 200);
-        }
-      }
+        bell.onended = () => { canPlayKeySound = true; };
+      } catch {}
     }
 
-    // ---------- PAGE INIT ----------
-
+    // ---------- PAGE DATA ----------
     function initBlankPage() {
       currentData = [];
       for (let r = 0; r < TOTAL_ROWS; r++) {
@@ -653,11 +609,59 @@
       cursorCol = FIRST_TEXT_COL;
     }
 
+    function getFinalTextFromPage(pageStacks) {
+      const lines = [];
+
+      for (let r = TOP_MARGIN_ROWS; r < TOP_MARGIN_ROWS + TEXT_LINES; r++) {
+        let line = '';
+        for (let c = FIRST_TEXT_COL; c <= LAST_TEXT_COL; c++) {
+          const stack = pageStacks[r][c];
+          line += (stack && stack.length) ? (stack[stack.length - 1].ch || ' ') : ' ';
+        }
+        lines.push(line.replace(/\s+$/g, ''));
+      }
+
+      return lines.join('\n').trim();
+    }
+
+    function countWordsInPage(pageStacks) {
+      const text = getFinalTextFromPage(pageStacks);
+      if (!text) return 0;
+      return text.split(/\s+/).filter(Boolean).length;
+    }
+
+    function makePageRecord(pageStacks) {
+      return {
+        stacks: pageStacks,
+        wordCount: countWordsInPage(pageStacks)
+      };
+    }
+
+    function normalizePageRecord(pageData) {
+      if (pageData && Array.isArray(pageData.stacks)) return pageData;
+      return makePageRecord(pageData);
+    }
+
+    function getDisplayStack(pageStacks, wordCount, r, c) {
+      const stack = (pageStacks && pageStacks[r] && pageStacks[r][c]) ? pageStacks[r][c] : [];
+      const label = `(words=${wordCount})`;
+      const labelIndex = c - FIRST_TEXT_COL;
+
+      if (r !== WORD_COUNT_ROW || labelIndex < 0 || labelIndex >= label.length) {
+        return stack;
+      }
+
+      return [...stack, { ch: label[labelIndex], shade: 1, yOffset: 0 }];
+    }
+
+    // ---------- LAYOUT ----------
     function createPaperArea() {
       initBlankPage();
+
       if (paperDiv && viewportElem.contains(paperDiv)) {
         viewportElem.removeChild(paperDiv);
       }
+
       paperDiv = document.createElement('div');
       paperDiv.className = 'paper-area';
       paperDiv.id = 'paper-area';
@@ -679,40 +683,26 @@
       });
     }
 
-    // ---------- LAYOUT (A4-ish aspect, applied via CSS vars) ----------
-
     function measureRowPx() {
-      // Measure monospace character width
       const probe = document.createElement('span');
       probe.style.fontFamily = "'Courier', monospace";
-      probe.style.fontSize   = "1.19em";
+      probe.style.fontSize = "1.19em";
       probe.style.visibility = "hidden";
-      probe.textContent      = "M";
+      probe.textContent = "M";
       document.body.appendChild(probe);
-      const w = Math.ceil(probe.getBoundingClientRect().width) + 2; // cell width in px
+      const w = Math.ceil(probe.getBoundingClientRect().width) + 2;
       document.body.removeChild(probe);
 
-      // Store as GLOBAL CSS variables so all paper instances share them
       document.documentElement.style.setProperty('--cell-size', w + 'px');
 
-      // A4 ratio: width / height = 210 / 297
-      // pageWidth  = COLS * w
-      // pageHeight = TOTAL_ROWS * h
-      // (COLS * w) / (TOTAL_ROWS * h) = 210 / 297
-      // => w / h = (210/297) * (TOTAL_ROWS / COLS)
-      // => h = w / targetWH
       const A4_RATIO = 210 / 297;
       const rowsOverCols = TOTAL_ROWS / COLS;
       const targetWH = A4_RATIO * rowsOverCols;
-
-      const h = w / targetWH; // row height in px
+      const h = w / targetWH;
 
       document.documentElement.style.setProperty('--row-height', h + 'px');
-
-      // Use this for viewport calculations
       rowPx = h;
 
-      // Set the total paper height explicitly for the main page
       if (paperDiv) {
         paperDiv.style.height = (rowPx * TOTAL_ROWS) + 'px';
       }
@@ -728,6 +718,7 @@
 
     function renderPage() {
       paperDiv.innerHTML = '';
+
       for (let r = 0; r < TOTAL_ROWS; r++) {
         const rowDiv = document.createElement('div');
         rowDiv.className = 'paper-row';
@@ -749,6 +740,7 @@
             if (stack.length) {
               const stackDiv = document.createElement('span');
               stackDiv.className = 'overstrike-stack';
+
               stack.forEach((item, k) => {
                 const overSpan = document.createElement('span');
                 overSpan.textContent = item.ch;
@@ -757,6 +749,7 @@
                 overSpan.style.top = `calc(50% + ${item.yOffset}px)`;
                 stackDiv.appendChild(overSpan);
               });
+
               cell.appendChild(stackDiv);
             }
           }
@@ -780,11 +773,13 @@
     function getCellWidthPx() {
       const firstCell = paperDiv ? paperDiv.querySelector('.paper-row .cell') : null;
       if (firstCell) return firstCell.getBoundingClientRect().width;
+
       const cssValue = getComputedStyle(document.documentElement).getPropertyValue('--cell-size');
       const parsed = parseFloat(cssValue);
       return Number.isFinite(parsed) && parsed > 0 ? parsed : 24;
     }
 
+    // ---------- ENTER ANIMATION ----------
     function getEnterAnimationDurationMs() {
       const durationSeconds = enterLong && Number.isFinite(enterLong.duration) ? enterLong.duration : 0;
       const playbackRate = enterLong && Number.isFinite(enterLong.playbackRate) && enterLong.playbackRate > 0
@@ -832,37 +827,39 @@
         travelCursor.remove();
         onDone();
       };
+
       animation.onfinish = finalize;
       animation.oncancel = finalize;
     }
 
-    // ---------- PAGE FINISH HELPERS ----------
+    // ---------- PAGE COMPLETION ----------
+    function finalizeCurrentPage() {
+      const pageStacks = JSON.parse(JSON.stringify(currentData));
+      const pageRecord = makePageRecord(pageStacks);
+      pagesData.push(pageRecord);
+      createThumbnail(pageRecord, pagesData.length - 1);
+      return pageRecord;
+    }
 
     function finishPageWithLongLock() {
-      const pageStacks = JSON.parse(JSON.stringify(currentData));
-      pagesData.push(pageStacks);
-      createThumbnail(pageStacks, pagesData.length - 1);
+      finalizeCurrentPage();
 
       viewportElem.style.overflow = 'visible';
       paperDiv.classList.add('paper-out');
+
       paperDiv.addEventListener('animationend', () => {
         if (viewportElem.contains(paperDiv)) {
           viewportElem.removeChild(paperDiv);
         }
         viewportElem.style.overflow = 'hidden';
-
-        // ensure we never stay "locked" after page change
         isTyping = false;
-
         createPaperArea();
       }, { once: true });
     }
 
     // ---------- KEY HANDLERS ----------
-
     function handleKey(e) {
       if (document.activeElement !== paperDiv) paperDiv.focus();
-
       if (!audioWarmed) warmUpAudio();
 
       if (e.repeat && e.key !== 'Enter') {
@@ -876,18 +873,18 @@
         return;
       }
 
-      // Ctrl+Enter: finish page with the same "paper out" sound as Hard Reset
+      // Ctrl+Enter => finish page
       if (e.key === 'Enter' && e.ctrlKey) {
         if (isTyping) { e.preventDefault(); return; }
 
         isTyping = true;
-
         const paperOut = document.getElementById('paper-out-sound');
+
         if (paperOut) {
           try {
             paperOut.currentTime = 0;
             paperOut.play();
-          } catch (e) {}
+          } catch {}
         }
 
         setTimeout(() => {
@@ -898,7 +895,7 @@
         return;
       }
 
-      // Enter: animated carriage return
+      // Enter => animated carriage return
       if (e.key === 'Enter') {
         if (isTyping) { e.preventDefault(); return; }
         if (e.repeat) { e.preventDefault(); return; }
@@ -913,6 +910,7 @@
         const endCol = FIRST_TEXT_COL;
 
         renderPage();
+
         const finishEnterAction = () => {
           if (isLastTextRow) {
             finishPageWithLongLock();
@@ -948,6 +946,7 @@
         try {
           enterLong.currentTime = 0;
           const playPromise = enterLong.play();
+
           if (playPromise && typeof playPromise.catch === 'function') {
             playPromise.catch(() => {
               enterLong.removeEventListener('playing', handlePlaying);
@@ -968,14 +967,16 @@
         return;
       }
 
-      // Backspace
+      // Backspace => moves cursor only
       if (e.key === 'Backspace') {
         if (isTyping) { e.preventDefault(); return; }
         isTyping = true;
+
         try {
           nokeySound.currentTime = 0;
           nokeySound.play();
         } catch {}
+
         setTimeout(() => {
           if (cursorCol > FIRST_TEXT_COL) {
             cursorCol--;
@@ -987,6 +988,7 @@
           positionViewport();
           isTyping = false;
         }, SHORT_DELAY);
+
         e.preventDefault();
         return;
       }
@@ -994,6 +996,7 @@
       // Space
       if (e.key === ' ') {
         if (isTyping) { e.preventDefault(); return; }
+
         if (
           cursorRow >= TOP_MARGIN_ROWS &&
           cursorRow < TOP_MARGIN_ROWS + TEXT_LINES &&
@@ -1001,10 +1004,12 @@
           cursorCol <= LAST_TEXT_COL
         ) {
           isTyping = true;
+
           try {
             nokeySound.currentTime = 0;
             nokeySound.play();
           } catch {}
+
           setTimeout(() => {
             const stack = currentData[cursorRow][cursorCol];
             const shade = Math.random() * 0.4 + 0.6;
@@ -1012,20 +1017,24 @@
             const r = Math.random();
             if (r < SHIFT_PROB / 2) yOffset = -1;
             else if (r < SHIFT_PROB) yOffset = 1;
+
             stack.push({ ch: ' ', shade, yOffset });
+
             if (cursorCol < LAST_TEXT_COL) cursorCol++;
             renderPage();
             positionViewport();
             isTyping = false;
           }, SHORT_DELAY);
         }
+
         e.preventDefault();
         return;
       }
 
       // Printable characters
-      if (e.key.length === 1) {
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
         if (isTyping) { e.preventDefault(); return; }
+
         if (
           cursorRow >= TOP_MARGIN_ROWS &&
           cursorRow < TOP_MARGIN_ROWS + TEXT_LINES &&
@@ -1034,6 +1043,7 @@
         ) {
           isTyping = true;
           playKeyClick();
+
           setTimeout(() => {
             const stack = currentData[cursorRow][cursorCol];
             const shade = Math.random() * 0.4 + 0.6;
@@ -1041,51 +1051,33 @@
             const r = Math.random();
             if (r < SHIFT_PROB / 2) yOffset = -1;
             else if (r < SHIFT_PROB) yOffset = 1;
+
             stack.push({ ch: e.key, shade, yOffset });
+
             if (cursorCol === BELL_COL) playBell();
             if (cursorCol < LAST_TEXT_COL) cursorCol++;
+
             renderPage();
             positionViewport();
             isTyping = false;
           }, SHORT_DELAY);
         }
+
         e.preventDefault();
         return;
       }
     }
 
-    function handleKeyUp(e) {
-      // nothing here for now
-    }
+    function handleKeyUp(e) {}
 
-    // ---------- BUILD PAGE DOM (base, no preview-specific classes) ----------
-
-    function normalizePageRecord(pageData) {
-      if (pageData && Array.isArray(pageData.stacks)) return pageData;
-      return {
-        stacks: pageData,
-        wordCount: countWordsInPage(pageData)
-      };
-    }
-
-    function getDisplayStack(pageStacks, wordCount, r, c) {
-      const stack = (pageStacks && pageStacks[r] && pageStacks[r][c]) ? pageStacks[r][c] : [];
-      const label = `(words=${wordCount})`;
-      const labelIndex = c - FIRST_TEXT_COL;
-
-      if (r !== WORD_COUNT_ROW || labelIndex < 0 || labelIndex >= label.length) {
-        return stack;
-      }
-
-      return [...stack, { ch: label[labelIndex], shade: 1, yOffset: 0 }];
-    }
-
+    // ---------- RENDER SAVED PAGE ----------
     function buildPageDOM(pageData) {
       const pageRecord = normalizePageRecord(pageData);
       const pageStacks = pageRecord.stacks;
       const wordCount = pageRecord.wordCount;
+
       const paper = document.createElement('div');
-      paper.className = 'paper-area';  // base; preview/thumbnail styles added later
+      paper.className = 'paper-area';
 
       for (let r = 0; r < TOTAL_ROWS; r++) {
         const rowDiv = document.createElement('div');
@@ -1104,9 +1096,11 @@
           }
 
           const displayStack = getDisplayStack(pageStacks, wordCount, r, c);
+
           if (displayStack.length) {
             const stackDiv = document.createElement('span');
             stackDiv.className = 'overstrike-stack';
+
             displayStack.forEach((item, k) => {
               const overSpan = document.createElement('span');
               overSpan.textContent = item.ch;
@@ -1115,6 +1109,7 @@
               overSpan.style.top = `calc(50% + ${item.yOffset}px)`;
               stackDiv.appendChild(overSpan);
             });
+
             cell.appendChild(stackDiv);
           }
 
@@ -1127,33 +1122,32 @@
       return paper;
     }
 
-    // ---------- THUMBNAILS & PREVIEW ----------
-
+    // ---------- THUMBNAILS ----------
     function createThumbnail(pageData, index) {
+      const pageRecord = normalizePageRecord(pageData);
+
       const wrapper = document.createElement('div');
       wrapper.className = 'thumbnail-wrapper';
 
       const thumb = document.createElement('div');
       thumb.className = 'thumbnail';
 
-      // Build base page DOM for the thumbnail
-      const miniPaper = buildPageDOM(pageData);
+      const miniPaper = buildPageDOM(pageRecord);
       miniPaper.classList.add('thumbnail-paper');
       thumb.appendChild(miniPaper);
 
       const label = document.createElement('div');
       label.className = 'thumbnail-label';
-      label.textContent = 'Page ' + (index + 1);
+      label.innerHTML = `Page ${index + 1}<br>(words=${pageRecord.wordCount})`;
 
       wrapper.appendChild(thumb);
       wrapper.appendChild(label);
       rightFrame.appendChild(wrapper);
 
-      // Scale thumbnail to a fixed target width so it's consistent
       requestAnimationFrame(() => {
         const rect = miniPaper.getBoundingClientRect();
         if (rect.width > 0 && rect.height > 0) {
-          const targetWidth = 120; // px, tweak if you want smaller/bigger
+          const targetWidth = 120;
           const scale = targetWidth / rect.width;
 
           miniPaper.style.transformOrigin = 'top left';
@@ -1164,14 +1158,13 @@
         }
       });
 
-      // Clicking the thumbnail opens the full preview
       wrapper.addEventListener('click', () => {
         openPreview(index, pagesData);
       });
     }
 
+    // ---------- PREVIEW ----------
     function openPreview(index, pagesDataRef) {
-      const initialPage = pagesDataRef[index];
       const overlay = document.createElement('div');
       overlay.className = 'preview-overlay';
 
@@ -1188,9 +1181,9 @@
       const btnContainer = document.createElement('div');
       btnContainer.className = 'preview-buttons';
 
-      // Navigation buttons
       const prevBtn = document.createElement('button');
       prevBtn.textContent = '← Prev';
+
       const nextBtn = document.createElement('button');
       nextBtn.textContent = 'Next →';
 
@@ -1216,8 +1209,7 @@
       const content = document.createElement('div');
       content.className = 'preview-content';
 
-      // Build preview paper (layout-scaled via CSS .preview-paper)
-      let previewPaper = buildPageDOM(initialPage);
+      let previewPaper = buildPageDOM(pagesDataRef[index]);
       previewPaper.classList.add('preview-paper');
       content.appendChild(previewPaper);
 
@@ -1226,7 +1218,6 @@
       overlay.appendChild(dialog);
       document.body.appendChild(overlay);
 
-      // Horizontal animated page loading
       function loadPage(newIndex, direction) {
         if (!pagesDataRef) return;
         if (newIndex < 0 || newIndex >= pagesDataRef.length) return;
@@ -1237,6 +1228,7 @@
         const inClass  = direction === 'next' ? 'slide-in-right' : 'slide-in-left';
 
         oldPaper.classList.add(outClass);
+
         oldPaper.addEventListener('animationend', () => {
           oldPaper.remove();
 
@@ -1256,13 +1248,8 @@
       }
 
       if (pagesDataRef && pagesDataRef.length > 1) {
-        prevBtn.addEventListener('click', () => {
-          loadPage(index - 1, 'prev');
-        });
-
-        nextBtn.addEventListener('click', () => {
-          loadPage(index + 1, 'next');
-        });
+        prevBtn.addEventListener('click', () => loadPage(index - 1, 'prev'));
+        nextBtn.addEventListener('click', () => loadPage(index + 1, 'next'));
       }
 
       function closeOverlay() {
@@ -1272,93 +1259,56 @@
       }
 
       closeBtn.addEventListener('click', closeOverlay);
-      overlay.addEventListener('click', (e) => {
+      overlay.addEventListener('click', e => {
         if (e.target === overlay) closeOverlay();
       });
 
-      // Download button opens the small popup
       downloadBtn.addEventListener('click', () => {
-        downloadPromptOverlay.style.display = 'flex';
-      });
+        if (!pagesDataRef || pagesDataRef.length === 0) return;
 
-      btnCancel.addEventListener('click', () => {
-        downloadPromptOverlay.style.display = 'none';
-      });
-
-      btnCurrent.addEventListener('click', () => {
-        if (pagesDataRef && pagesDataRef[index]) {
-          generatePDF(pagesDataRef[index], index);
-        }
-        downloadPromptOverlay.style.display = 'none';
-      });
-
-      btnAll.addEventListener('click', () => {
-        if (pagesDataRef && pagesDataRef.length > 0) {
+        if (pagesDataRef.length === 1) {
+          generatePDF(pagesDataRef[0], 0);
+        } else {
           generateAllPagesPDF(pagesDataRef);
         }
-        downloadPromptOverlay.style.display = 'none';
       });
     }
 
     // ---------- PDF ----------
+    function generatePDF(pageData, index) {
+      const pageRecord = normalizePageRecord(pageData);
+      const pageStacks = pageRecord.stacks;
+      const wordCount = pageRecord.wordCount;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'pt', format: 'A4' });
 
- function getFinalTextFromPage(pageStacks) {
-  const lines = [];
+      doc.setFont('Courier');
+      const fontSize = 14;
+      doc.setFontSize(fontSize);
+      const lineHeight = fontSize * 1.5;
+      const charWidth = doc.getTextWidth('M');
 
-  for (let r = TOP_MARGIN_ROWS; r < TOP_MARGIN_ROWS + TEXT_LINES; r++) {
-    let line = '';
+      let y = 40;
+      const marginLeft = 40;
 
-    for (let c = FIRST_TEXT_COL; c <= LAST_TEXT_COL; c++) {
-      const stack = pageStacks[r][c];
-      line += (stack && stack.length) ? (stack[stack.length - 1].ch || ' ') : ' ';
+      for (let r = 0; r < TOTAL_ROWS; r++) {
+        let x = marginLeft;
+        for (let c = 0; c < COLS; c++) {
+          const displayStack = getDisplayStack(pageStacks, wordCount, r, c);
+          displayStack.forEach(item => {
+            const grayVal = Math.round((1 - item.shade) * 255);
+            doc.setTextColor(grayVal, grayVal, grayVal);
+            const yShift = item.yOffset * 1;
+            doc.text(item.ch, x, y + yShift);
+          });
+          x += charWidth;
+        }
+        doc.setTextColor(0, 0, 0);
+        y += lineHeight;
+      }
+
+      doc.save('page_' + (index + 1) + '.pdf');
     }
-
-    lines.push(line.replace(/\s+$/g, ''));
-  }
-
-  return lines.join('\n').trim();
-}
-
-function countWordsInPage(pageStacks) {
-  const text = getFinalTextFromPage(pageStacks);
-  if (!text) return 0;
-  return text.split(/\s+/).filter(Boolean).length;
-}
-
-function generatePDF(pageData, index) {
-  const pageRecord = normalizePageRecord(pageData);
-  const pageStacks = pageRecord.stacks;
-  const wordCount = pageRecord.wordCount;
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit: 'pt', format: 'A4' });
-
-  doc.setFont('Courier');
-  const fontSize = 14;
-  doc.setFontSize(fontSize);
-  const lineHeight = fontSize * 1.5;
-  const charWidth = doc.getTextWidth('M');
-
-  let y = 40;
-  const marginLeft = 40;
-
-  for (let r = 0; r < TOTAL_ROWS; r++) {
-    let x = marginLeft;
-    for (let c = 0; c < COLS; c++) {
-      const displayStack = getDisplayStack(pageStacks, wordCount, r, c);
-      displayStack.forEach(item => {
-        const grayVal = Math.round((1 - item.shade) * 255);
-        doc.setTextColor(grayVal, grayVal, grayVal);
-        const yShift = item.yOffset * 1;
-        doc.text(item.ch, x, y + yShift);
-      });
-      x += charWidth;
-    }
-    doc.setTextColor(0, 0, 0);
-    y += lineHeight;
-  }
-
-  doc.save('page_' + (index + 1) + '.pdf');
-}
 
     function generateAllPagesPDF(pagesDataRef) {
       const { jsPDF } = window.jspdf;
@@ -1374,9 +1324,9 @@ function generatePDF(pageData, index) {
         const pageRecord = normalizePageRecord(pageData);
         const pageStacks = pageRecord.stacks;
         const wordCount = pageRecord.wordCount;
-        if (pageIndex > 0) {
-          doc.addPage();
-        }
+
+        if (pageIndex > 0) doc.addPage();
+
         let y = 40;
         const marginLeft = 40;
 
@@ -1400,8 +1350,7 @@ function generatePDF(pageData, index) {
       doc.save('typewriter_all_pages.pdf');
     }
 
-    // ---------- HARD RESET ----------
-
+    // ---------- RESET ----------
     function hardReset() {
       if (!paperDiv || !viewportElem.contains(paperDiv)) {
         pagesData = [];
@@ -1412,7 +1361,7 @@ function generatePDF(pageData, index) {
 
       if (!paperDiv.classList.contains('paper-out')) {
         const paperOut = document.getElementById('paper-out-sound');
-        let animDuration = 1; // fallback in seconds
+        let animDuration = 1;
 
         if (paperOut) {
           try {
@@ -1421,11 +1370,10 @@ function generatePDF(pageData, index) {
             }
             paperOut.currentTime = 0;
             paperOut.play();
-          } catch (e) {}
+          } catch {}
         }
 
         paperDiv.style.animationDuration = animDuration + 's';
-
         viewportElem.style.overflow = 'visible';
         paperDiv.classList.add('paper-out');
 
@@ -1433,6 +1381,7 @@ function generatePDF(pageData, index) {
           if (viewportElem.contains(paperDiv)) {
             viewportElem.removeChild(paperDiv);
           }
+
           rightFrame.querySelectorAll('.thumbnail-wrapper').forEach(el => el.remove());
           pagesData = [];
           viewportElem.style.overflow = 'hidden';
@@ -1441,8 +1390,7 @@ function generatePDF(pageData, index) {
       }
     }
 
-    // ---------- DOM READY ----------
-
+    // ---------- STARTUP ----------
     document.addEventListener('DOMContentLoaded', () => {
       pagesData = [];
       createPaperArea();
@@ -1458,23 +1406,26 @@ function generatePDF(pageData, index) {
           document.body.classList.toggle('right-collapsed');
           const collapsed = document.body.classList.contains('right-collapsed');
           toggleRightBtn.textContent = collapsed ? 'Show' : 'Hide';
-          if (paperDiv) { measureRowPx(); renderPage(); positionViewport(); }
+
+          if (paperDiv) {
+            measureRowPx();
+            renderPage();
+            positionViewport();
+          }
         });
       }
 
       const modal = document.getElementById('infoModal');
       const confirmBtn = document.getElementById('infoModalConfirm');
+
       if (modal && confirmBtn) {
         document.body.classList.add('modal-open');
+
         confirmBtn.addEventListener('click', () => {
           modal.classList.add('hidden');
           document.body.classList.remove('modal-open');
-
-          // Warm audio immediately after the user's first interaction so the
-          // very first keystrokes aren't muted by the warmup routine.
           warmUpAudio();
 
-          // Give focus to the paper instantly so typing can begin right away.
           if (paperDiv) {
             requestAnimationFrame(() => paperDiv.focus({ preventScroll: true }));
           }
@@ -1483,7 +1434,6 @@ function generatePDF(pageData, index) {
     });
 
     // ---------- RESIZE ----------
-
     window.addEventListener('resize', () => {
       if (paperDiv) {
         measureRowPx();
