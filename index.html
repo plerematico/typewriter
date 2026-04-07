@@ -1260,37 +1260,63 @@
 
     // ---------- PDF ----------
 
-    function generatePDF(pageStacks, index) {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ unit: 'pt', format: 'A4' });
+ function getFinalTextFromPage(pageStacks) {
+  const lines = [];
 
-      doc.setFont('Courier');
-      const fontSize = 14;
-      doc.setFontSize(fontSize);
-      const lineHeight = fontSize * 1.5;
-      const charWidth = doc.getTextWidth('M');
+  for (let r = TOP_MARGIN_ROWS; r < TOP_MARGIN_ROWS + TEXT_LINES; r++) {
+    let line = '';
 
-      let y = 40;
-      const marginLeft = 40;
-
-      for (let r = 0; r < TOTAL_ROWS; r++) {
-        let x = marginLeft;
-        for (let c = 0; c < COLS; c++) {
-          const stack = pageStacks[r][c];
-          stack.forEach(item => {
-            const grayVal = Math.round((1 - item.shade) * 255);
-            doc.setTextColor(grayVal, grayVal, grayVal);
-            const yShift = item.yOffset * 1;
-            doc.text(item.ch, x, y + yShift);
-          });
-          x += charWidth;
-        }
-        doc.setTextColor(0, 0, 0);
-        y += lineHeight;
-      }
-
-      doc.save('page_' + (index + 1) + '.pdf');
+    for (let c = FIRST_TEXT_COL; c <= LAST_TEXT_COL; c++) {
+      const stack = pageStacks[r][c];
+      line += (stack && stack.length) ? (stack[stack.length - 1].ch || ' ') : ' ';
     }
+
+    lines.push(line.replace(/\s+$/g, ''));
+  }
+
+  return lines.join('\n').trim();
+}
+
+function countWordsInPage(pageStacks) {
+  const text = getFinalTextFromPage(pageStacks);
+  if (!text) return 0;
+  return text.split(/\s+/).filter(Boolean).length;
+}
+
+function generatePDF(pageStacks, index) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'A4' });
+
+  doc.setFont('Courier');
+  const fontSize = 14;
+  doc.setFontSize(fontSize);
+  const lineHeight = fontSize * 1.5;
+  const charWidth = doc.getTextWidth('M');
+
+  let y = 40;
+  const marginLeft = 40;
+
+  for (let r = 0; r < TOTAL_ROWS; r++) {
+    let x = marginLeft;
+    for (let c = 0; c < COLS; c++) {
+      const stack = pageStacks[r][c];
+      stack.forEach(item => {
+        const grayVal = Math.round((1 - item.shade) * 255);
+        doc.setTextColor(grayVal, grayVal, grayVal);
+        const yShift = item.yOffset * 1;
+        doc.text(item.ch, x, y + yShift);
+      });
+      x += charWidth;
+    }
+    doc.setTextColor(0, 0, 0);
+    y += lineHeight;
+  }
+
+  const wordCount = countWordsInPage(pageStacks);
+  doc.text(`(words=${wordCount})`, marginLeft, y);
+
+  doc.save('page_' + (index + 1) + '.pdf');
+}
 
     function generateAllPagesPDF(pagesDataRef) {
       const { jsPDF } = window.jspdf;
