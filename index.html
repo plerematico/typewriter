@@ -532,6 +532,7 @@
     const SHORT_DELAY        = 50;
     const SHIFT_PROB         = 0.1;
     const ENTER_ACTION_DELAY = 60;
+    const ENTER_ANIMATION_DURATION_MS = 1302;
 
     // ---------- DOM ----------
     const viewportElem = document.getElementById('viewport');
@@ -780,14 +781,6 @@
     }
 
     // ---------- ENTER ANIMATION ----------
-    function getEnterAnimationDurationMs() {
-      const durationSeconds = enterLong && Number.isFinite(enterLong.duration) ? enterLong.duration : 0;
-      const playbackRate = enterLong && Number.isFinite(enterLong.playbackRate) && enterLong.playbackRate > 0
-        ? enterLong.playbackRate
-        : 1;
-      return durationSeconds > 0 ? (durationSeconds * 1000) / playbackRate : 700;
-    }
-
     function animateEnterTravel(startRow, startCol, endRow, endCol, durationMs, onDone) {
       const cellWidth = getCellWidthPx();
       const startX = startCol * cellWidth + (cellWidth / 2);
@@ -961,7 +954,7 @@
           isTyping = false;
         };
 
-        const durationMs = getEnterAnimationDurationMs();
+        const durationMs = ENTER_ANIMATION_DURATION_MS;
         let pendingAnimations = 2;
         const handleAnimationDone = () => {
           pendingAnimations--;
