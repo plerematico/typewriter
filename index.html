@@ -886,12 +886,8 @@
 
     function finishPageWithLongLock() {
       const pageStacks = JSON.parse(JSON.stringify(currentData));
-      const pageRecord = {
-        stacks: pageStacks,
-        wordCount: countWordsInPage(pageStacks)
-      };
-      pagesData.push(pageRecord);
-      createThumbnail(pageRecord, pagesData.length - 1);
+      pagesData.push(pageStacks);
+      createThumbnail(pageStacks, pagesData.length - 1);
 
       viewportElem.style.overflow = 'visible';
       paperDiv.classList.add('paper-out');
