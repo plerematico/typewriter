@@ -840,12 +840,8 @@
 
     function finishPageWithLongLock() {
       const pageStacks = JSON.parse(JSON.stringify(currentData));
-      const pageRecord = {
-        stacks: pageStacks,
-        wordCount: countWordsInPage(pageStacks)
-      };
-      pagesData.push(pageRecord);
-      createThumbnail(pageRecord, pagesData.length - 1);
+      pagesData.push(pageStacks);
+      createThumbnail(pageStacks, pagesData.length - 1);
 
       viewportElem.style.overflow = 'visible';
       paperDiv.classList.add('paper-out');
@@ -1280,13 +1276,27 @@
         if (e.target === overlay) closeOverlay();
       });
 
+      // Download button opens the small popup
       downloadBtn.addEventListener('click', () => {
-        if (!pagesDataRef || pagesDataRef.length === 0) return;
-        if (pagesDataRef.length === 1) {
-          generatePDF(pagesDataRef[0], 0);
-          return;
+        downloadPromptOverlay.style.display = 'flex';
+      });
+
+      btnCancel.addEventListener('click', () => {
+        downloadPromptOverlay.style.display = 'none';
+      });
+
+      btnCurrent.addEventListener('click', () => {
+        if (pagesDataRef && pagesDataRef[index]) {
+          generatePDF(pagesDataRef[index], index);
         }
-        generateAllPagesPDF(pagesDataRef);
+        downloadPromptOverlay.style.display = 'none';
+      });
+
+      btnAll.addEventListener('click', () => {
+        if (pagesDataRef && pagesDataRef.length > 0) {
+          generateAllPagesPDF(pagesDataRef);
+        }
+        downloadPromptOverlay.style.display = 'none';
       });
     }
 
