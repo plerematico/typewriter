@@ -380,52 +380,6 @@
     .preview-paper.slide-out-right { animation: slideOutRight 0.22s ease-out forwards; }
     .preview-paper.slide-in-left   { animation: slideInLeft 0.22s ease-out forwards; }
 
-    /* Small popup inside preview dialog for download choices */
-    .download-prompt-overlay {
-      position: absolute;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.35);
-      display: none;          /* hidden by default */
-      align-items: center;
-      justify-content: center;
-      z-index: 10;            /* sits above the preview paper */
-    }
-
-    .download-prompt-box {
-      background: #fdfaf3;
-      border: 1px solid var(--preview-border);
-      border-radius: 6px;
-      padding: 12px 16px;
-      min-width: 220px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-      font-size: 0.9rem;
-    }
-
-    .download-prompt-box p {
-      margin: 0 0 10px 0;
-    }
-
-    .download-prompt-buttons {
-      display: flex;
-      justify-content: flex-end;
-      gap: 6px;
-      margin-top: 6px;
-    }
-
-    .download-prompt-buttons button {
-      font-size: 0.85rem;
-      padding: 3px 8px;
-      cursor: pointer;
-      border-radius: 3px;
-      border: 1px solid var(--preview-border);
-      background: var(--preview-button-bg);
-      color: var(--preview-text);
-    }
-
-    .download-prompt-buttons button:hover {
-      background: var(--preview-button-bg-hover);
-    }
-
     /* PAGE-LOAD INFO MODAL */
     .modal-overlay {
       position: fixed;
@@ -1267,39 +1221,8 @@
       previewPaper.classList.add('preview-paper');
       content.appendChild(previewPaper);
 
-      // Download mode popup overlay (inside dialog)
-      const downloadPromptOverlay = document.createElement('div');
-      downloadPromptOverlay.className = 'download-prompt-overlay';
-
-      const downloadBox = document.createElement('div');
-      downloadBox.className = 'download-prompt-box';
-
-      const downloadText = document.createElement('p');
-      downloadText.textContent = 'Download:';
-
-      const btnRow = document.createElement('div');
-      btnRow.className = 'download-prompt-buttons';
-
-      const btnCurrent = document.createElement('button');
-      btnCurrent.textContent = 'Current page';
-
-      const btnAll = document.createElement('button');
-      btnAll.textContent = 'All pages';
-
-      const btnCancel = document.createElement('button');
-      btnCancel.textContent = 'Cancel';
-
-      btnRow.appendChild(btnCurrent);
-      btnRow.appendChild(btnAll);
-      btnRow.appendChild(btnCancel);
-
-      downloadBox.appendChild(downloadText);
-      downloadBox.appendChild(btnRow);
-      downloadPromptOverlay.appendChild(downloadBox);
-
       dialog.appendChild(header);
       dialog.appendChild(content);
-      dialog.appendChild(downloadPromptOverlay);
       overlay.appendChild(dialog);
       document.body.appendChild(overlay);
 
