@@ -656,8 +656,19 @@
     }
 
     // ---------- LAYOUT ----------
+    function resetViewportAnimations() {
+      if (!viewportElem || typeof viewportElem.getAnimations !== 'function') return;
+      viewportElem.getAnimations().forEach(animation => {
+        try {
+          animation.cancel();
+        } catch {}
+      });
+    }
+
     function createPaperArea() {
       initBlankPage();
+      resetViewportAnimations();
+      viewportElem.style.overflow = 'hidden';
 
       if (paperDiv && viewportElem.contains(paperDiv)) {
         viewportElem.removeChild(paperDiv);
@@ -678,8 +689,8 @@
 
       requestAnimationFrame(() => {
         measureRowPx();
-        renderPage();
         positionViewport();
+        renderPage();
         paperDiv.focus();
       });
     }
