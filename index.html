@@ -1307,7 +1307,11 @@
         y += lineHeight;
       }
 
-      doc.save('page_' + (index + 1) + '.pdf');
+      const now = new Date();
+      const day = String(now.getDate()).padStart(2, '0');
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const year = now.getFullYear();
+      doc.save(`${day}-${month}-${year}.pdf`);
     }
 
     function generateAllPagesPDF(pagesDataRef) {
@@ -1347,7 +1351,11 @@
         }
       });
 
-      doc.save('typewriter_all_pages.pdf');
+      const now = new Date();
+      const day = String(now.getDate()).padStart(2, '0');
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const year = now.getFullYear();
+      doc.save(`${day}-${month}-${year}.pdf`);
     }
 
     // ---------- RESET ----------
