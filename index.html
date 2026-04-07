@@ -566,6 +566,7 @@
     const TEXT_COLS          = 55;
     const FIRST_TEXT_COL     = LEFT_MARGIN;
     const LAST_TEXT_COL      = FIRST_TEXT_COL + TEXT_COLS - 1;
+    const WORD_COUNT_ROW     = TOP_MARGIN_ROWS + TEXT_LINES;
     const BELL_COL           = FIRST_TEXT_COL + TEXT_COLS - 5;
 
     const VISIBLE_INITIAL    = 3;
@@ -1105,7 +1106,30 @@
 
     // ---------- BUILD PAGE DOM (base, no preview-specific classes) ----------
 
-    function buildPageDOM(pageStacks) {
+    function normalizePageRecord(pageData) {
+      if (pageData && Array.isArray(pageData.stacks)) return pageData;
+      return {
+        stacks: pageData,
+        wordCount: countWordsInPage(pageData)
+      };
+    }
+
+    function getDisplayStack(pageStacks, wordCount, r, c) {
+      const stack = (pageStacks && pageStacks[r] && pageStacks[r][c]) ? pageStacks[r][c] : [];
+      const label = `(words=${wordCount})`;
+      const labelIndex = c - FIRST_TEXT_COL;
+
+      if (r !== WORD_COUNT_ROW || labelIndex < 0 || labelIndex >= label.length) {
+        return stack;
+      }
+
+      return [...stack, { ch: label[labelIndex], shade: 1, yOffset: 0 }];
+    }
+
+    function buildPageDOM(pageData) {
+      const pageRecord = normalizePageRecord(pageData);
+      const pageStacks = pageRecord.stacks;
+      const wordCount = pageRecord.wordCount;
       const paper = document.createElement('div');
       paper.className = 'paper-area';  // base; preview/thumbnail styles added later
 
@@ -1125,21 +1149,19 @@
             cell.classList.add('textarea');
           }
 
-          if (r >= TOP_MARGIN_ROWS && r < TOP_MARGIN_ROWS + TEXT_LINES) {
-            const stack = pageStacks[r][c];
-            if (stack.length) {
-              const stackDiv = document.createElement('span');
-              stackDiv.className = 'overstrike-stack';
-              stack.forEach((item, k) => {
-                const overSpan = document.createElement('span');
-                overSpan.textContent = item.ch;
-                overSpan.style.zIndex = 10 + k;
-                overSpan.style.color = `rgba(0,0,0,${item.shade})`;
-                overSpan.style.top = `calc(50% + ${item.yOffset}px)`;
-                stackDiv.appendChild(overSpan);
-              });
-              cell.appendChild(stackDiv);
-            }
+          const displayStack = getDisplayStack(pageStacks, wordCount, r, c);
+          if (displayStack.length) {
+            const stackDiv = document.createElement('span');
+            stackDiv.className = 'overstrike-stack';
+            displayStack.forEach((item, k) => {
+              const overSpan = document.createElement('span');
+              overSpan.textContent = item.ch;
+              overSpan.style.zIndex = 10 + k;
+              overSpan.style.color = `rgba(0,0,0,${item.shade})`;
+              overSpan.style.top = `calc(50% + ${item.yOffset}px)`;
+              stackDiv.appendChild(overSpan);
+            });
+            cell.appendChild(stackDiv);
           }
 
           rowDiv.appendChild(cell);
@@ -1153,7 +1175,7 @@
 
     // ---------- THUMBNAILS & PREVIEW ----------
 
-    function createThumbnail(pageStacks, index) {
+    function createThumbnail(pageData, index) {
       const wrapper = document.createElement('div');
       wrapper.className = 'thumbnail-wrapper';
 
@@ -1161,7 +1183,7 @@
       thumb.className = 'thumbnail';
 
       // Build base page DOM for the thumbnail
-      const miniPaper = buildPageDOM(pageStacks);
+      const miniPaper = buildPageDOM(pageData);
       miniPaper.classList.add('thumbnail-paper');
       thumb.appendChild(miniPaper);
 
@@ -1190,11 +1212,12 @@
 
       // Clicking the thumbnail opens the full preview
       wrapper.addEventListener('click', () => {
-        openPreview(pageStacks, index, pagesData);
+        openPreview(index, pagesData);
       });
     }
 
-    function openPreview(pageStacks, index, pagesDataRef) {
+    function openPreview(index, pagesDataRef) {
+      const initialPage = pagesDataRef[index];
       const overlay = document.createElement('div');
       overlay.className = 'preview-overlay';
 
@@ -1240,7 +1263,7 @@
       content.className = 'preview-content';
 
       // Build preview paper (layout-scaled via CSS .preview-paper)
-      let previewPaper = buildPageDOM(pageStacks);
+      let previewPaper = buildPageDOM(initialPage);
       previewPaper.classList.add('preview-paper');
       content.appendChild(previewPaper);
 
@@ -1342,8 +1365,6 @@
       btnCurrent.addEventListener('click', () => {
         if (pagesDataRef && pagesDataRef[index]) {
           generatePDF(pagesDataRef[index], index);
-        } else {
-          generatePDF(pageStacks, index);
         }
         downloadPromptOverlay.style.display = 'none';
       });
@@ -1381,7 +1402,10 @@ function countWordsInPage(pageStacks) {
   return text.split(/\s+/).filter(Boolean).length;
 }
 
-function generatePDF(pageStacks, index) {
+function generatePDF(pageData, index) {
+  const pageRecord = normalizePageRecord(pageData);
+  const pageStacks = pageRecord.stacks;
+  const wordCount = pageRecord.wordCount;
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'pt', format: 'A4' });
 
@@ -1397,8 +1421,8 @@ function generatePDF(pageStacks, index) {
   for (let r = 0; r < TOTAL_ROWS; r++) {
     let x = marginLeft;
     for (let c = 0; c < COLS; c++) {
-      const stack = pageStacks[r][c];
-      stack.forEach(item => {
+      const displayStack = getDisplayStack(pageStacks, wordCount, r, c);
+      displayStack.forEach(item => {
         const grayVal = Math.round((1 - item.shade) * 255);
         doc.setTextColor(grayVal, grayVal, grayVal);
         const yShift = item.yOffset * 1;
@@ -1409,9 +1433,6 @@ function generatePDF(pageStacks, index) {
     doc.setTextColor(0, 0, 0);
     y += lineHeight;
   }
-
-  const wordCount = countWordsInPage(pageStacks);
-  doc.text(`(words=${wordCount})`, marginLeft, y);
 
   doc.save('page_' + (index + 1) + '.pdf');
 }
@@ -1426,7 +1447,10 @@ function generatePDF(pageStacks, index) {
       const lineHeight = fontSize * 1.5;
       const charWidth = doc.getTextWidth('M');
 
-      pagesDataRef.forEach((pageStacks, pageIndex) => {
+      pagesDataRef.forEach((pageData, pageIndex) => {
+        const pageRecord = normalizePageRecord(pageData);
+        const pageStacks = pageRecord.stacks;
+        const wordCount = pageRecord.wordCount;
         if (pageIndex > 0) {
           doc.addPage();
         }
@@ -1436,8 +1460,8 @@ function generatePDF(pageStacks, index) {
         for (let r = 0; r < TOTAL_ROWS; r++) {
           let x = marginLeft;
           for (let c = 0; c < COLS; c++) {
-            const stack = pageStacks[r][c];
-            stack.forEach(item => {
+            const displayStack = getDisplayStack(pageStacks, wordCount, r, c);
+            displayStack.forEach(item => {
               const grayVal = Math.round((1 - item.shade) * 255);
               doc.setTextColor(grayVal, grayVal, grayVal);
               const yShift = item.yOffset * 1;
