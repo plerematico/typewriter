@@ -473,15 +473,15 @@
 
   <div id="infoModal" class="modal-overlay">
     <div class="modal-dialog">
-      <h2>Typewriter Tool – Read before you start V0.7</h2>
+      <h2>Typewriter Tool – Read before you start V0.9</h2>
       <div class="modal-body">
         <p>
           This tool behaves like a real typewriter. It does <strong>not</strong> autosave.
-          If you reload the page or use <strong>Hard Reset</strong>, everything on the page is lost.
+          If you reload the page or use <strong>Hard Reset</strong>, everything is lost.
         </p>
         <p><strong>Basic rules</strong></p>
         <ul>
-          <li>You cannot delet, the Backspace key only moves the cursor.</li>
+          <li>You cannot delete, the Backspace key only moves the cursor.</li>
           <li>The bell dings near the end of each line.</li>
           <li>If you keep typing without a new line, characters overstrike.</li>
           <li>Don’t type too fast or the mechanism may “miss” some keys.</li>
@@ -489,7 +489,7 @@
         <p><strong>Shortcuts</strong></p>
         <ul>
           <li><strong>Enter</strong>: new line, move to left margin.</li>
-          <li><strong>Ctrl + Enter</strong>: finish the page immediately.</li>
+          <li><strong>Ctrl + Enter</strong>: Puts the page on the side, and starts a new page.</li>
         </ul>
       </div>
       <div class="modal-footer">
@@ -509,7 +509,9 @@
 
     <div class="right-frame" id="right-frame">
       <h2>Finished Pages</h2>
-    </div>
+    <div class="modal-footer">
+        Only these pages will be downloaded.
+        </div>
   </div>
 
   <audio id="bell" src="Ding.wav" preload="auto"></audio>
@@ -530,10 +532,10 @@
     const FIRST_TEXT_COL     = LEFT_MARGIN;
     const LAST_TEXT_COL      = FIRST_TEXT_COL + TEXT_COLS - 1;
     const WORD_COUNT_ROW     = TOP_MARGIN_ROWS + TEXT_LINES;
-    const BELL_COL           = FIRST_TEXT_COL + TEXT_COLS - 5;
+    const BELL_COL           = FIRST_TEXT_COL + TEXT_COLS - 10;
 
     const VISIBLE_INITIAL    = 3;
-    const SHORT_DELAY        = 50;
+    const SHORT_DELAY        = 40;
     const SHIFT_PROB         = 0.1;
     const ENTER_ACTION_DELAY = 650;
 
@@ -971,36 +973,39 @@ animateEnterTravel(startRow, startCol, endRow, endCol, ENTER_ACTION_DELAY, () =>
         return;
       }
 
-      if (e.key === ' ') {
-        if (isTyping) { e.preventDefault(); return; }
-        if (
-          cursorRow >= TOP_MARGIN_ROWS &&
-          cursorRow < TOP_MARGIN_ROWS + TEXT_LINES &&
-          cursorCol >= FIRST_TEXT_COL &&
-          cursorCol <= LAST_TEXT_COL
-        ) {
-          isTyping = true;
-          try {
-            nokeySound.currentTime = 0;
-            nokeySound.play();
-          } catch {}
-          setTimeout(() => {
-            const stack = currentData[cursorRow][cursorCol];
-            const shade = Math.random() * 0.4 + 0.6;
-            let yOffset = 0;
-            const r = Math.random();
-            if (r < SHIFT_PROB / 2) yOffset = -1;
-            else if (r < SHIFT_PROB) yOffset = 1;
-            stack.push({ ch: ' ', shade, yOffset });
-            if (cursorCol < LAST_TEXT_COL) cursorCol++;
-            renderPage();
-            positionViewport();
-            isTyping = false;
-          }, SHORT_DELAY);
-        }
-        e.preventDefault();
-        return;
-      }
+     if (e.key === ' ') {
+  if (isTyping) { e.preventDefault(); return; }
+  if (
+    cursorRow >= TOP_MARGIN_ROWS &&
+    cursorRow < TOP_MARGIN_ROWS + TEXT_LINES &&
+    cursorCol >= FIRST_TEXT_COL &&
+    cursorCol <= LAST_TEXT_COL
+  ) {
+    isTyping = true;
+    try {
+      nokeySound.currentTime = 0;
+      nokeySound.play();
+    } catch {}
+    setTimeout(() => {
+      const stack = currentData[cursorRow][cursorCol];
+      const shade = Math.random() * 0.4 + 0.6;
+      let yOffset = 0;
+      const r = Math.random();
+      if (r < SHIFT_PROB / 2) yOffset = -1;
+      else if (r < SHIFT_PROB) yOffset = 1;
+      stack.push({ ch: ' ', shade, yOffset });
+
+      if (cursorCol === BELL_COL) playBell();
+
+      if (cursorCol < LAST_TEXT_COL) cursorCol++;
+      renderPage();
+      positionViewport();
+      isTyping = false;
+    }, SHORT_DELAY);
+  }
+  e.preventDefault();
+  return;
+}
 
       if (e.key.length === 1) {
         if (isTyping) { e.preventDefault(); return; }
@@ -1401,6 +1406,7 @@ document.body.appendChild(overlay);
         positionViewport();
       }
     });
+document.addEventListener('contextmenu', e => e.preventDefault());
   </script>
 </body>
 </html>
