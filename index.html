@@ -473,7 +473,7 @@
 
   <div id="infoModal" class="modal-overlay">
     <div class="modal-dialog">
-      <h2>Typewriter Tool – Read before you start V0.9</h2>
+      <h2>Typewriter Tool – Read before you start V1.0</h2>
       <div class="modal-body">
         <p>
           This tool behaves like a real typewriter. It does <strong>not</strong> autosave.
@@ -1230,12 +1230,6 @@ document.body.appendChild(overlay);
   }
 });
 
-      btnAll.addEventListener('click', () => {
-        if (pagesDataRef && pagesDataRef.length > 0) {
-          generateAllPagesPDF(pagesDataRef);
-        }
-        downloadPromptOverlay.style.display = 'none';
-      });
     }
 
     function getDateFilename() {
@@ -1249,6 +1243,7 @@ document.body.appendChild(overlay);
     function generatePDF(pageData, index) {
       const pageRecord = normalizePageRecord(pageData);
       const pageStacks = pageRecord.stacks;
+      const wordCount = pageRecord.wordCount;
 
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ unit: 'pt', format: 'A4' });
@@ -1265,7 +1260,7 @@ document.body.appendChild(overlay);
       for (let r = 0; r < TOTAL_ROWS; r++) {
         let x = marginLeft;
         for (let c = 0; c < COLS; c++) {
-          const stack = pageStacks[r][c];
+          const stack = getDisplayStack(pageStacks, wordCount, r, c);
           stack.forEach(item => {
             const grayVal = Math.round((1 - item.shade) * 255);
             doc.setTextColor(grayVal, grayVal, grayVal);
@@ -1294,6 +1289,7 @@ document.body.appendChild(overlay);
       pagesDataRef.forEach((pageData, pageIndex) => {
         const pageRecord = normalizePageRecord(pageData);
         const pageStacks = pageRecord.stacks;
+        const wordCount = pageRecord.wordCount;
 
         if (pageIndex > 0) {
           doc.addPage();
@@ -1304,7 +1300,7 @@ document.body.appendChild(overlay);
         for (let r = 0; r < TOTAL_ROWS; r++) {
           let x = marginLeft;
           for (let c = 0; c < COLS; c++) {
-            const stack = pageStacks[r][c];
+            const stack = getDisplayStack(pageStacks, wordCount, r, c);
             stack.forEach(item => {
               const grayVal = Math.round((1 - item.shade) * 255);
               doc.setTextColor(grayVal, grayVal, grayVal);
